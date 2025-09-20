@@ -1,0 +1,16 @@
+.aider*
+.DS_Store
+record.db
+__pycache__
+
+# CLI generated files
+cli/*.html
+cli/*.png
+cli/*.pdf
+
+# Webapp generated files
+webapp/database.db
+webapp/static/
+
+# uv lock file
+uv.lock

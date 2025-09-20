@@ -1,0 +1,33 @@
+
+{% extends "layout.html" %}
+{% block content %}
+  <h1>Record Exam: {{ exam.filename.split('/')[-1] }}</h1>
+  <p>For each character, select the score (0 = forgot, 10 = perfect).</p>
+  
+  <form method="post">
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="width: 10%;">Character</th>
+          <th style="width: 90%;">Score</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for char in characters %}
+          <tr>
+            <td style="font-size: 24pt;">{{ char }}</td>
+            <td>
+              <div class="btn-group" role="group" aria-label="Score for {{ char }}">
+                {% for i in range(11) %}
+                  <input type="radio" class="btn-check" name="score_{{ char }}" id="score_{{ char }}_{{ i }}" value="{{ i }}" autocomplete="off" {% if i == 10 %}checked{% endif %}>
+                  <label class="btn btn-outline-primary" for="score_{{ char }}_{{ i }}">{{ i }}</label>
+                {% endfor %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <button type="submit" class="btn btn-success">Save Scores</button>
+  </form>
+{% endblock %}

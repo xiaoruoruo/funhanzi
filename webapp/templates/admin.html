@@ -1,0 +1,32 @@
+
+{% extends "layout.html" %}
+{% block content %}
+  <h1>Admin</h1>
+  <form method="post">
+    <div class="mb-3">
+      <label for="lesson_range" class="form-label">Lesson Range</label>
+      <input type="text" class="form-control" id="lesson_range" name="lesson_range" value="{{ settings.lesson_range }}">
+    </div>
+    <div class="mb-3">
+      <label for="read_exam_chars" class="form-label">Number of Characters (Read Exam)</label>
+      <input type="number" class="form-control" id="read_exam_chars" name="read_exam_chars" value="{{ settings.read_exam_chars }}">
+    </div>
+    <div class="mb-3">
+      <label for="write_exam_chars" class="form-label">Number of Characters (Write Exam)</label>
+      <input type="number" class="form-control" id="write_exam_chars" name="write_exam_chars" value="{{ settings.write_exam_chars }}">
+    </div>
+    <div class="mb-3">
+      <label for="study_chars" class="form-label">Number of Characters (Study)</label>
+      <input type="number" class="form-control" id="study_chars" name="study_chars" value="{{ settings.study_chars }}">
+    </div>
+    <div class="mb-3">
+      <label for="failed_threshold" class="form-label">Failed Score Threshold</label>
+      <input type="number" class="form-control" id="failed_threshold" name="failed_threshold" value="{{ settings.failed_threshold }}">
+    </div>
+    <div class="mb-3">
+      <label for="failed_recency_days" class="form-label">Recency for Failed (Days)</label>
+      <input type="number" class="form-control" id="failed_recency_days" name="failed_recency_days" value="{{ settings.failed_recency_days }}">
+    </div>
+    <button type="submit" class="btn btn-primary">Save</button>
+  </form>
+{% endblock %}
