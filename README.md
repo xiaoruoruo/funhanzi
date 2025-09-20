@@ -74,6 +74,8 @@ The application's learning schedule is managed by the `py-fsrs` library.
 
 Ensure a python environment is installed. [uv](https://docs.astral.sh/uv/getting-started/installation/) is recommended.
 
+Set `GEMINI_API_KEY=xxx` in `~/.env`. Get a `free` Gemini API key from https://aistudio.google.com/apikey.
+
 The characters you will study lives in `words.txt`. You can change the content, with one line per "lesson".
 
 Then run the web server:
