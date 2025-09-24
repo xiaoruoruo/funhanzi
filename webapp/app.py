@@ -290,7 +290,10 @@ def generate_study(study_type):
         )
 
     elif study_type == 'words':
-        logic.generate_find_words_puzzle(num_chars, lesson_range, output_filename)
+        study_source = settings_dict.get('study_source', 'basic')
+        days_filter = int(settings_dict.get('failed_recency_days', 8))
+        logic.generate_find_words_puzzle(num_chars, lesson_range, output_filename, study_source=study_source, days_filter=days_filter)
+
     else:
         return "Invalid study type", 400
 

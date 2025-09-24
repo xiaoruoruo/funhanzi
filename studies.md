@@ -29,3 +29,16 @@ If setting "Study source" is set to "basic":
 If setting "Study source" is set to "review":
 
 - Characters: By SRS schedule, find characters with lowest "Write Retrievability" (exclude 0). Filter out characters studied in last `days_filter` days.
+
+## Generate Find Words Puzzle
+
+Endpoint: /study/generate/words
+
+If setting "Study source" is set to "basic":
+
+Characters: From the chosen lessons, filter out characters examed (having "read" record) in last `days_filter` days. and filter out characters with the last "read" score greater than `score_filter`. Select a random subset.
+
+If setting "Study source" is set to "review":
+
+- Characters: By SRS schedule, find characters with lowest "Read Retrievability" (exclude 0). Filter out characters studied (having "readstudy" record) in last `days_filter` days.
+

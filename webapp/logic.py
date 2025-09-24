@@ -462,35 +462,66 @@ def generate_grid(sentence, words, filler_chars):
             grid[r_][c_] = random.choice(filler_chars)
     return grid, start_row
 
-def generate_find_words_puzzle(num_chars, lessons, output_filename, score_filter=None, days_filter=None):
+def generate_find_words_puzzle(num_chars, lessons, output_filename, score_filter=None, days_filter=None, study_source=None):
     load_dotenv()
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise ValueError("GEMINI_API_KEY not found in .env file")
     genai.configure(api_key=api_key)
 
-    lesson_numbers = parse_lesson_ranges(lessons)
-    char_pool = []
-    for num in lesson_numbers:
-        lesson_chars = get_lesson(num)
-        if lesson_chars:
-            char_pool.extend(list(lesson_chars))
+    if study_source == 'review':
+        import fsrs_logic
+        
+        # Get all 'read' cards and calculate retrievability
+        read_cards = []
+        for (char, card_type), card in fsrs_logic.cards.items():
+            if card_type == 'read':
+                retrievability = fsrs_logic.read_scheduler.get_card_retrievability(card, datetime.now(timezone.utc))
+                if retrievability is not None and retrievability > 0:
+                    read_cards.append({'char': char, 'retrievability': float(retrievability)})
+        
+        # Sort by retrievability (lowest first)
+        read_cards.sort(key=lambda x: x['retrievability'])
+        
+        # Get the characters
+        char_pool = [card['char'] for card in read_cards]
 
-    unique_chars = list(set(char_pool))
-    if score_filter is not None:
-        unique_chars = filter_chars_by_score(unique_chars, "read", score_filter)
-    if days_filter is not None:
-        unique_chars = filter_chars_by_days(unique_chars, days_filter)
+        # Filter out recently studied characters
+        if days_filter is not None:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cutoff_date = (date.today() - timedelta(days=days_filter)).isoformat()
+            cursor.execute("SELECT DISTINCT character FROM records WHERE date >= ? AND type IN ('readstudy')", (cutoff_date,))
+            recent_chars = {row['character'] for row in cursor.fetchall()}
+            conn.close()
+            char_pool = [char for char in char_pool if char not in recent_chars]
 
-    num_to_select = min(num_chars, len(unique_chars))
-    selected_chars = random.sample(unique_chars, k=num_to_select)
+        # Select the top `num_chars`
+        selected_chars = char_pool[:num_chars]
+    else:
+        lesson_numbers = parse_lesson_ranges(lessons)
+        char_pool = []
+        for num in lesson_numbers:
+            lesson_chars = get_lesson(num)
+            if lesson_chars:
+                char_pool.extend(list(lesson_chars))
+
+        unique_chars = list(set(char_pool))
+        if score_filter is not None:
+            unique_chars = filter_chars_by_score(unique_chars, "read", score_filter)
+        if days_filter is not None:
+            unique_chars = filter_chars_by_days(unique_chars, days_filter)
+
+        num_to_select = min(num_chars, len(unique_chars))
+        selected_chars = random.sample(unique_chars, k=num_to_select)
 
     model = genai.GenerativeModel("gemini-2.5-flash")
     characters_str = "".join(selected_chars)
+    print(characters_str)
     prompt = f"""
-请根据以下汉字：'{characters_str}'
-1. 生成8个双字词语。这些词语应该尽可能使用列表中的汉字。
-2. 生成一个包含部分词语的简单句子。
+我在给2年级的孩子准备中文生字复习，请根据以下汉字：'{characters_str}'
+1. 生成5-10个双字词语。这些词语要使用到列表中的汉字，可以使用1-2次。 
+2. 生成1个简单的句子，包含全部10个字。
 
 请以JSON格式返回，不要包含任何其他说明文字或代码块标记。结构如下：
 {{
