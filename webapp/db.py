@@ -68,6 +68,7 @@ def create_tables():
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('study_chars', '20')")
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('failed_threshold', '5')")
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('failed_recency_days', '8')")
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('study_source', 'basic')")
 
 
     conn.commit()

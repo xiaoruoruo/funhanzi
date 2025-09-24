@@ -2,7 +2,7 @@ import os
 import random
 import sqlite3
 import sys
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, timezone
 import google.generativeai as genai
 from dotenv import load_dotenv
 
@@ -306,13 +306,61 @@ def format_study_sheet_html(characters_data, output_filename):
     with open(output_filename, "w", encoding="utf-8") as f:
         f.write(html)
 
-def generate_study_chars_sheet(num_chars, lessons, output_filename, score_filter=None, days_filter=None, character_list=None):
+def _generate_study_sheet_from_chars(selected_chars, output_filename):
+    # Generate pinyin and words using Gemini
     load_dotenv()
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise ValueError("GEMINI_API_KEY not found in .env file")
     genai.configure(api_key=api_key)
+    model = genai.GenerativeModel("gemini-2.5-flash")
+    
+    characters_data = []
+    for char in selected_chars:
+        prompt = f"请为“{char}”这个字，提供它的拼音，以及一个最常见的、由两个字组成的词语。请用这个格式返回：拼音，词语。例如：pīn yīn, 词语"
+        response = model.generate_content(prompt)
+        try:
+            pinyin, word = response.text.strip().split(",", 1)
+            characters_data.append((char, pinyin.strip(), word.strip()))
+        except ValueError:
+            characters_data.append((char, "N/A", "N/A"))
 
+    format_study_sheet_html(characters_data, output_filename)
+    return output_filename
+
+def generate_review_study_sheet(num_chars, output_filename, days_filter=None):
+    import fsrs_logic
+    
+    # Get all 'write' cards and calculate retrievability
+    write_cards = []
+    for (char, card_type), card in fsrs_logic.cards.items():
+        if card_type == 'write':
+            retrievability = fsrs_logic.write_scheduler.get_card_retrievability(card, datetime.now(timezone.utc))
+            if retrievability is not None and retrievability > 0:
+                write_cards.append({'char': char, 'retrievability': float(retrievability)})
+    
+    # Sort by retrievability (lowest first)
+    write_cards.sort(key=lambda x: x['retrievability'])
+    
+    # Get the characters
+    char_pool = [card['char'] for card in write_cards]
+
+    # Filter out recently studied characters
+    if days_filter is not None:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cutoff_date = (date.today() - timedelta(days=days_filter)).isoformat()
+        cursor.execute("SELECT DISTINCT character FROM records WHERE date >= ? AND type IN ('readstudy', 'writestudy')", (cutoff_date,))
+        recent_chars = {row['character'] for row in cursor.fetchall()}
+        conn.close()
+        char_pool = [char for char in char_pool if char not in recent_chars]
+
+    # Select the top `num_chars`
+    selected_chars = char_pool[:num_chars]
+    
+    return _generate_study_sheet_from_chars(selected_chars, output_filename)
+
+def generate_study_chars_sheet(num_chars, lessons, output_filename, score_filter=None, days_filter=None, character_list=None):
     if character_list is not None:
         char_pool = character_list
     else:
@@ -332,19 +380,7 @@ def generate_study_chars_sheet(num_chars, lessons, output_filename, score_filter
     num_to_select = min(num_chars, len(unique_chars))
     selected_chars = random.sample(unique_chars, k=num_to_select) if character_list is None else unique_chars[:num_to_select]
 
-    model = genai.GenerativeModel("gemini-2.5-flash")
-    characters_data = []
-    for char in selected_chars:
-        prompt = f"请为“{char}”这个字，提供它的拼音，以及一个最常见的、由两个字组成的词语。请用这个格式返回：拼音，词语。例如：pīn yīn, 词语"
-        response = model.generate_content(prompt)
-        try:
-            pinyin, word = response.text.strip().split(",", 1)
-            characters_data.append((char, pinyin.strip(), word.strip()))
-        except ValueError:
-            characters_data.append((char, "N/A", "N/A"))
-
-    format_study_sheet_html(characters_data, output_filename)
-    return output_filename
+    return _generate_study_sheet_from_chars(selected_chars, output_filename)
 
 def format_find_words_html(words, sentence, grid, start_row, output_filename, title="找朋友"):
     start_marker_top = f"calc((100% / 16) + (100% / 8) * {start_row})"

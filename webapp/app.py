@@ -217,7 +217,12 @@ def generate_study(study_type):
     output_filename = f"webapp/static/studies/{study_type}_{timestamp}.html"
 
     if study_type == 'chars':
-        logic.generate_study_chars_sheet(num_chars, lesson_range, output_filename)
+        study_source = settings_dict.get('study_source', 'basic')
+        if study_source == 'review':
+            days_filter = int(settings_dict.get('failed_recency_days', 8))
+            logic.generate_review_study_sheet(num_chars, output_filename, days_filter=days_filter)
+        else:
+            logic.generate_study_chars_sheet(num_chars, lesson_range, output_filename)
     elif study_type == 'failed':
         failed_threshold = int(settings_dict.get('failed_threshold', 5))
         failed_recency_days = int(settings_dict.get('failed_recency_days', 8))
@@ -376,6 +381,8 @@ def admin():
                      (request.form['write_exam_chars'],))
         conn.execute("UPDATE settings SET value = ? WHERE key = 'study_chars'",
                      (request.form['study_chars'],))
+        conn.execute("UPDATE settings SET value = ? WHERE key = 'study_source'",
+                        (request.form['study_source'],))
         conn.execute("UPDATE settings SET value = ? WHERE key = 'failed_threshold'",
                         (request.form['failed_threshold'],))
         conn.execute("UPDATE settings SET value = ? WHERE key = 'failed_recency_days'",

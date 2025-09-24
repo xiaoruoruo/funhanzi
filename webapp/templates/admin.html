@@ -20,6 +20,13 @@
       <input type="number" class="form-control" id="study_chars" name="study_chars" value="{{ settings.study_chars }}">
     </div>
     <div class="mb-3">
+      <label for="study_source" class="form-label">Study Source</label>
+      <select class="form-select" id="study_source" name="study_source">
+        <option value="basic" {% if settings.study_source == 'basic' %}selected{% endif %}>Basic</option>
+        <option value="review" {% if settings.study_source == 'review' %}selected{% endif %}>Review</option>
+      </select>
+    </div>
+    <div class="mb-3">
       <label for="failed_threshold" class="form-label">Failed Score Threshold</label>
       <input type="number" class="form-control" id="failed_threshold" name="failed_threshold" value="{{ settings.failed_threshold }}">
     </div>
