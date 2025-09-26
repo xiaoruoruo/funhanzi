@@ -30,7 +30,7 @@ If setting "Study source" is set to "review":
 
 - Characters: By SRS schedule, find characters with lowest "Write Retrievability" (exclude 0). Filter out characters studied in last `days_filter` days.
 
-## Generate Find Words Puzzle
+## Find Words Puzzle
 
 Endpoint: /study/generate/words
 
@@ -41,4 +41,8 @@ Characters: From the chosen lessons, filter out characters examed (having "read"
 If setting "Study source" is set to "review":
 
 - Characters: By SRS schedule, find characters with lowest "Read Retrievability" (exclude 0). Filter out characters studied (having "readstudy" record) in last `days_filter` days.
+
+## Cloze test
+
+Endpoint: /study/generate/cloze
 

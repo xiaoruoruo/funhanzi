@@ -172,31 +172,73 @@ def study():
     conn.close()
     return render_template('study.html', studies=studies)
 
+def parse_characters_from_standard_study_sheet(html_file):
+    characters = []
+    with open(html_file, 'r', encoding='utf-8') as f:
+        soup = BeautifulSoup(f, 'html.parser')
+        # Find all table rows, skip the header row
+        rows = soup.find_all('tr')[1:]
+        for row in rows:
+            # The character is in the first cell of each row
+            char_cell = row.find('td')
+            if char_cell:
+                characters.append(char_cell.text.strip())
+    return characters
+
+def parse_characters_from_find_words_puzzle(html_file):
+    characters = set()
+    with open(html_file, 'r', encoding='utf-8') as f:
+        soup = BeautifulSoup(f, 'html.parser')
+        sentence_box = soup.find('div', class_='sentence-box')
+        if sentence_box:
+            sentence = sentence_box.text.strip()
+            for char in sentence:
+                # Add any character that is a Chinese character
+                if '\u4e00' <= char <= '\u9fff':
+                    characters.add(char)
+    return sorted(list(characters))
+
 @app.route('/study/mark_done/<int:study_id>')
 def mark_study_done(study_id):
     conn = db.get_db_connection()
     study = conn.execute('SELECT * FROM studies WHERE id = ?', (study_id,)).fetchone()
 
-    if study and study['type'] == 'failed':
+    if study:
         study_filepath = f"webapp/{study['filename']}"
-        read_chars, write_chars = parse_characters_from_study_sheet(study_filepath)
-        
         today_str = datetime.date.today().strftime('%Y-%m-%d')
-        
-        for char in read_chars:
-            conn.execute(
-                "INSERT INTO records (character, type, score, date) VALUES (?, ?, ?, ?)",
-                (char, 'read', 8, today_str)
-            )
-        
-        for char in write_chars:
-            conn.execute(
-                "INSERT INTO records (character, type, score, date) VALUES (?, ?, ?, ?)",
-                (char, 'write', 8, today_str)
-            )
-        
-        # Rebuild cards to reflect the new scores
-        fsrs_logic.rebuild_cards_from_records(conn)
+
+        if study['type'] == 'failed':
+            read_chars, write_chars = parse_characters_from_study_sheet(study_filepath)
+            
+            for char in read_chars:
+                conn.execute(
+                    "INSERT INTO records (character, type, score, date) VALUES (?, ?, ?, ?)",
+                    (char, 'read', 8, today_str)
+                )
+            
+            for char in write_chars:
+                conn.execute(
+                    "INSERT INTO records (character, type, score, date) VALUES (?, ?, ?, ?)",
+                    (char, 'write', 8, today_str)
+                )
+            
+            fsrs_logic.rebuild_cards_from_records(conn)
+
+        elif study['type'] == 'words':
+            chars = parse_characters_from_find_words_puzzle(study_filepath)
+            for char in chars:
+                conn.execute(
+                    "INSERT INTO records (character, type, score, date) VALUES (?, ?, ?, ?)",
+                    (char, 'readstudy', 10, today_str)
+                )
+
+        elif study['type'] == 'chars':
+            chars = parse_characters_from_standard_study_sheet(study_filepath)
+            for char in chars:
+                conn.execute(
+                    "INSERT INTO records (character, type, score, date) VALUES (?, ?, ?, ?)",
+                    (char, 'readstudy', 10, today_str)
+                )
 
     conn.execute("UPDATE studies SET done = TRUE WHERE id = ?", (study_id,))
     conn.commit()
