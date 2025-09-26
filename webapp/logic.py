@@ -462,6 +462,139 @@ def generate_grid(sentence, words, filler_chars):
             grid[r_][c_] = random.choice(filler_chars)
     return grid, start_row
 
+def format_cloze_test_html(pairs, output_filename, title="句子填空"):
+    # Randomize the order of words and sentences independently
+    words = [p[0] for p in pairs]
+    sentences = [p[1] for p in pairs]
+    random.shuffle(words)
+    random.shuffle(sentences)
+
+    html_content = f"""
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>{title}</title>
+    <style>
+        @page {{ size: letter; margin: 1in; }}
+        body {{ font-family: 'Songti SC', 'STSong', serif; font-size: 16pt; }}
+        .container {{ width: 90%; margin: auto; }}
+        h1 {{ text-align: center; margin-bottom: 20px; }}
+        .instructions {{ text-align: center; margin-bottom: 30px; }}
+        .cloze-table {{ width: 100%; border-collapse: collapse; }}
+        .cloze-table td {{ padding: 15px 5px; vertical-align: middle; }}
+        .word-cell {{ width: 25%; text-align: center; }}
+        .sentence-cell {{ width: 75%; }}
+        .word-box {{ border: 2px solid #ccc; border-radius: 15px; padding: 10px 20px; display: inline-block; }}
+        .bullet {{ font-size: 20px; margin-right: 10px; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{title}</h1>
+        <p class="instructions">找出句子中正确的词组，将它们连起来。</p>
+        <table class="cloze-table">
+"""
+    for i in range(len(words)):
+        html_content += f"""
+            <tr>
+                <td class="word-cell"><div class="word-box">{words[i]}</div></td>
+                <td class="sentence-cell"><span class="bullet">&bull;</span>{sentences[i]}</td>
+            </tr>
+"""
+    html_content += """
+        </table>
+    </div>
+</body>
+</html>
+"""
+    with open(output_filename, "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+def generate_cloze_test(num_chars, lessons, output_filename, score_filter=None, days_filter=None, study_source=None):
+    load_dotenv()
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY not found in .env file")
+    genai.configure(api_key=api_key)
+
+    if study_source == 'review':
+        import fsrs_logic
+        read_cards = []
+        for (char, card_type), card in fsrs_logic.cards.items():
+            if card_type == 'read':
+                retrievability = fsrs_logic.read_scheduler.get_card_retrievability(card, datetime.now(timezone.utc))
+                if retrievability is not None and retrievability > 0:
+                    read_cards.append({'char': char, 'retrievability': float(retrievability)})
+        read_cards.sort(key=lambda x: x['retrievability'])
+        char_pool = [card['char'] for card in read_cards]
+
+        if days_filter is not None:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cutoff_date = (date.today() - timedelta(days=days_filter)).isoformat()
+            cursor.execute("SELECT DISTINCT character FROM records WHERE date >= ? AND type IN ('readstudy')", (cutoff_date,))
+            recent_chars = {row['character'] for row in cursor.fetchall()}
+            conn.close()
+            char_pool = [char for char in char_pool if char not in recent_chars]
+
+        selected_chars = char_pool[:num_chars]
+    else:
+        lesson_numbers = parse_lesson_ranges(lessons)
+        char_pool = []
+        for num in lesson_numbers:
+            lesson_chars = get_lesson(num)
+            if lesson_chars:
+                char_pool.extend(list(lesson_chars))
+
+        unique_chars = list(set(char_pool))
+        if score_filter is not None:
+            unique_chars = filter_chars_by_score(unique_chars, "read", score_filter)
+        if days_filter is not None:
+            unique_chars = filter_chars_by_days(unique_chars, days_filter)
+
+        num_to_select = min(num_chars, len(unique_chars))
+        selected_chars = random.sample(unique_chars, k=num_to_select)
+
+    model = genai.GenerativeModel("gemini-2.5-flash")
+    characters_str = "".join(selected_chars)
+    prompt = f"""
+    我在给2年级的孩子准备中文生字复习，请根据以下汉字：'{characters_str}'
+    1. 生成5个双字词语。这些词语要使用到列表中的汉字，每个汉字只能用一次。
+    2. 为每个词语生成一个包含该词语的简单句子。
+
+    请以JSON格式返回，不要包含任何其他说明文字或代码块标记。结构如下：
+    {{
+      "pairs": [
+        {{"word": "词语1", "sentence": "包含词语1的句子。"}},
+        {{"word": "词语2", "sentence": "包含词语2的句子。"}},
+        {{"word": "词语3", "sentence": "包含词语3的句子。"}},
+        {{"word": "词语4", "sentence": "包含词语4的句子。"}},
+        {{"word": "词语5", "sentence": "包含词语5的句子。"}}
+      ]
+    }}
+    """
+    response = model.generate_content(prompt)
+    import json
+    try:
+        cleaned_text = response.text.strip()
+        if cleaned_text.startswith("```json"):
+            cleaned_text = cleaned_text[7:]
+        if cleaned_text.endswith("```"):
+            cleaned_text = cleaned_text[:-3]
+        data = json.loads(cleaned_text)
+        pairs = []
+        for item in data['pairs']:
+            word = item['word']
+            sentence = item['sentence']
+            cloze_sentence = sentence.replace(word, '（ ）', 1)
+            pairs.append((word, cloze_sentence))
+    except (json.JSONDecodeError, KeyError):
+        pairs = [("错误", "无法生成句子")] * 5
+
+    format_cloze_test_html(pairs, output_filename)
+    return output_filename
+
 def generate_find_words_puzzle(num_chars, lessons, output_filename, score_filter=None, days_filter=None, study_source=None):
     load_dotenv()
     api_key = os.getenv("GEMINI_API_KEY")

@@ -1,4 +1,3 @@
-
 from flask import Flask, render_template, request, redirect, url_for
 import db
 import logic
@@ -172,6 +171,17 @@ def study():
     conn.close()
     return render_template('study.html', studies=studies)
 
+def parse_characters_from_cloze_test(html_file):
+    characters = set()
+    with open(html_file, 'r', encoding='utf-8') as f:
+        soup = BeautifulSoup(f, 'html.parser')
+        word_boxes = soup.find_all('div', class_='word-box')
+        for box in word_boxes:
+            for char in box.text.strip():
+                if '\u4e00' <= char <= '\u9fff':
+                    characters.add(char)
+    return sorted(list(characters))
+
 def parse_characters_from_standard_study_sheet(html_file):
     characters = []
     with open(html_file, 'r', encoding='utf-8') as f:
@@ -234,6 +244,14 @@ def mark_study_done(study_id):
 
         elif study['type'] == 'chars':
             chars = parse_characters_from_standard_study_sheet(study_filepath)
+            for char in chars:
+                conn.execute(
+                    "INSERT INTO records (character, type, score, date) VALUES (?, ?, ?, ?)",
+                    (char, 'readstudy', 10, today_str)
+                )
+        
+        elif study['type'] == 'cloze':
+            chars = parse_characters_from_cloze_test(study_filepath)
             for char in chars:
                 conn.execute(
                     "INSERT INTO records (character, type, score, date) VALUES (?, ?, ?, ?)",
@@ -335,6 +353,11 @@ def generate_study(study_type):
         study_source = settings_dict.get('study_source', 'basic')
         days_filter = int(settings_dict.get('failed_recency_days', 8))
         logic.generate_find_words_puzzle(num_chars, lesson_range, output_filename, study_source=study_source, days_filter=days_filter)
+
+    elif study_type == 'cloze':
+        study_source = settings_dict.get('study_source', 'basic')
+        days_filter = int(settings_dict.get('failed_recency_days', 8))
+        logic.generate_cloze_test(num_chars, lesson_range, output_filename, study_source=study_source, days_filter=days_filter)
 
     else:
         return "Invalid study type", 400

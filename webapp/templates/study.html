@@ -5,34 +5,35 @@
     <h1>Study History</h1>
     <div>
       <a href="{{ url_for('generate_study', study_type='chars') }}" class="btn btn-primary">Generate Study Sheet</a>
-      <a href="{{ url_for('generate_study', study_type='failed') }}" class="btn btn-warning">Generate Failed Study</a>
-      <a href="{{ url_for('generate_study', study_type='words') }}" class="btn btn-secondary">Generate Find Words Puzzle</a>
+      <a href="{{ url_for('generate_study', study_type='failed') }}" class="btn btn-secondary">Failed Study</a>
+      <a href="{{ url_for('generate_study', study_type='words') }}" class="btn btn-primary">Find Words Puzzle</a>
+      <a href="{{ url_for('generate_study', study_type='cloze') }}" class="btn btn-secondary">Cloze Test</a>
     </div>
   </div>
   <table class="table">
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Filename</th>
-        <th>Created At</th>
-        <th>Status</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for study in studies %}
-        <tr>
-          <td>{{ study.type }}</td>
+        <thead>
+            <tr>
+                <th>Type</th>
+                <th>Filename</th>
+                <th>Created At</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for study in studies %}
+            <tr>
+                <td>{{ study.type }}</td>
           <td><a href="{{ url_for('static', filename=study.filename.split('static/')[1]) }}">{{ study.filename.split('/')[-1] }}</a></td>
-          <td>{{ study.created_at }}</td>
+                <td>{{ study.created_at }}</td>
           <td>{{ 'Done' if study.done else 'Pending' }}</td>
-          <td>
-            {% if not study.done %}
+                <td>
+                    {% if not study.done %}
               <a href="{{ url_for('mark_study_done', study_id=study.id) }}" class="btn btn-sm btn-success">Mark as Done</a>
-            {% endif %}
-          </td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 {% endblock %}
