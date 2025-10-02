@@ -3,13 +3,8 @@ import os
 import random
 import sys
 
-import google.generativeai as genai
-from dotenv import load_dotenv
-
-from exam_record import filter_chars_by_score, filter_chars_by_days
-from words import get_lesson, parse_lesson_ranges
-import exam_formatter
-
+from . import exam_formatter
+from .ai import get_gemini_model
 
 def main():
     """Main function to generate study material for characters."""
@@ -79,17 +74,8 @@ def main():
 
     print(f"Selected {len(selected_chars)} characters to study: {''.join(selected_chars)}")
 
-    # Load environment variables from .env file
-    load_dotenv()
+    model = get_gemini_model()
 
-    # Configure the generative AI model
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        print("Error: GEMINI_API_KEY not found in .env file.", file=sys.stderr)
-        sys.exit(1)
-    genai.configure(api_key=api_key)
-
-    model = genai.GenerativeModel("gemini-2.5-flash")
 
     characters_data = []
     # Generate pinyin and words for the selected characters.

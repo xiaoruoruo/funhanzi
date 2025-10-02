@@ -1,16 +1,22 @@
+
 import argparse
 import json
 import os
 import random
+import sqlite3
 import sys
 
 import google.generativeai as genai
 from dotenv import load_dotenv
-from exam_formatter import format_find_words_html
-from exam_record import filter_chars_by_days, filter_chars_by_score
-from words import get_lesson, parse_lesson_ranges
+from .exam_formatter import format_find_words_html
+from .exam_record import (DB_FILE, filter_chars_by_days, filter_chars_by_score,
+                         get_db_connection)
+from .words import get_lesson, parse_lesson_ranges
 
 GRID_SIZE = 8
+MAX_SENTENCE_LENGTH = 18
+MAX_RETRIES = 5
+
 
 def generate_grid(sentence, words, filler_chars):
     """
@@ -23,25 +29,25 @@ def generate_grid(sentence, words, filler_chars):
     # Start at a random row in the first column.
     start_row = random.randint(0, GRID_SIZE - 1)
     r, c = start_row, 0
-    
+
     # Place each character of the sentence and find the next random, empty cell.
     for char in sentence:
         grid[r][c] = char
-        
+
         # Find all valid, empty neighboring cells for the next move.
         possible_moves = []
         # Check all 8 directions (including diagonals).
         for dr in [-1, 0, 1]:
             for dc in [-1, 0, 1]:
                 if dr == 0 and dc == 0:
-                    continue # Skip the current cell itself.
-                
+                    continue  # Skip the current cell itself.
+
                 # Heavily prefer moving to the right to ensure the sentence progresses.
                 if dc < 1 and random.random() < 0.4:
                     continue
 
                 nr, nc = r + dr, c + dc
-                
+
                 # Check if the new position is within the grid and is empty.
                 if 0 <= nr < GRID_SIZE and 0 <= nc < GRID_SIZE and grid[nr][nc] is None:
                     possible_moves.append((nr, nc))
@@ -61,9 +67,9 @@ def generate_grid(sentence, words, filler_chars):
         for c in range(GRID_SIZE):
             if grid[r][c] is None:
                 empty_cells.append((r, c))
-    
+
     random.shuffle(empty_cells)
-    
+
     # For each word, find an empty horizontal slot of two characters.
     for word in words:
         is_filled = False
@@ -75,7 +81,7 @@ def generate_grid(sentence, words, filler_chars):
                 grid[r][c] = word[0]
                 grid[r][c+1] = word[1]
                 is_filled = True
-                break # Move to the next word.
+                break  # Move to the next word.
 
         if not is_filled:
             print("Warning: Ran out of space for words.", file=sys.stderr)
@@ -93,6 +99,88 @@ def generate_grid(sentence, words, filler_chars):
             grid[r][c] = random.choice(filler_chars)
 
     return grid, start_row
+
+
+def get_learned_chars(conn):
+    """Fetches all unique characters that have a 'read' or 'write' record."""
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT DISTINCT character FROM records WHERE type IN ('read', 'write')")
+        return {row[0] for row in cursor.fetchall()}
+    except sqlite3.OperationalError:
+        # Table might not exist yet, which is fine.
+        return set()
+
+
+from .ai import get_gemini_model
+
+
+def generate_sentence_and_words(selected_chars):
+    """
+    Generates a sentence and a list of words using the Gemini API,
+    ensuring the sentence is not too long and contains only allowed characters.
+    """
+    model = get_gemini_model()
+
+    conn = get_db_connection()
+    learned_chars = get_learned_chars(conn)
+    conn.close()
+
+
+    allowed_chars = set(selected_chars).union(learned_chars)
+    characters_str = "".join(selected_chars)
+    learned_chars_str = "".join(learned_chars)
+
+    prompt = f"""
+请根据以下汉字：
+- 学习汉字: '{characters_str}'
+- 已学汉字: '{learned_chars_str}'
+
+1. 生成8个双字词语。这些词语应该尽可能使用学习汉字列表中的汉字。
+2. 生成一个包含部分词语的简单句子。这个句子必须满足以下条件：
+   - 长度不能超过{MAX_SENTENCE_LENGTH}个汉字。
+   - 只能包含学习汉字和已学汉字列表中的汉字。
+
+请以JSON格式返回，不要包含任何其他说明文字或代码块标记。结构如下：
+{{
+  "words": ["词语1", "词语2", "词语3", "词语4", "词语5", "词语6", "词语7", "词语8"],
+  "sentence": "一个句子。"
+}}
+"""
+
+    for attempt in range(MAX_RETRIES):
+        print(f"Generating content with Gemini (Attempt {attempt + 1}/{MAX_RETRIES})...")
+        response = model.generate_content(prompt)
+
+        try:
+            cleaned_text = response.text.strip()
+            if cleaned_text.startswith("```json"):
+                cleaned_text = cleaned_text[7:]
+            if cleaned_text.endswith("```"):
+                cleaned_text = cleaned_text[:-3]
+
+            data = json.loads(cleaned_text)
+            words = data["words"]
+            sentence = data["sentence"]
+
+            if len(sentence) > MAX_SENTENCE_LENGTH:
+                print(f"Warning: Sentence is too long ({len(sentence)} > {MAX_SENTENCE_LENGTH}). Retrying.", file=sys.stderr)
+                continue
+
+            if not all(c in allowed_chars for c in sentence):
+                print("Warning: Sentence contains unlearned characters. Retrying.", file=sys.stderr)
+                continue
+
+            return words, sentence
+
+        except (json.JSONDecodeError, KeyError) as e:
+            print(f"Error: Failed to parse response from Gemini on attempt {attempt + 1}.", file=sys.stderr)
+            print(f"Received text: {response.text}", file=sys.stderr)
+            print(f"Error details: {e}", file=sys.stderr)
+            # Continue to next attempt
+
+    print(f"Error: Failed to generate a valid sentence after {MAX_RETRIES} attempts.", file=sys.stderr)
+    sys.exit(1)
 
 
 def main():
@@ -160,52 +248,10 @@ def main():
 
     num_to_select = min(args.num_chars, unique_chars_count)
     selected_chars = random.sample(unique_chars, k=num_to_select)
-    
+
     print(f"Selected {len(selected_chars)} characters: {''.join(selected_chars)}")
 
-    # Load environment variables from .env file
-    load_dotenv()
-
-    # Configure the generative AI model
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        print("Error: GEMINI_API_KEY not found in .env file.", file=sys.stderr)
-        sys.exit(1)
-    genai.configure(api_key=api_key)
-
-    model = genai.GenerativeModel("gemini-2.5-flash")
-
-    characters_str = "".join(selected_chars)
-    prompt = f"""
-请根据以下汉字：'{characters_str}'
-1. 生成8个双字词语。这些词语应该尽可能使用列表中的汉字。
-2. 生成一个包含部分词语的简单句子。
-
-请以JSON格式返回，不要包含任何其他说明文字或代码块标记。结构如下：
-{{
-  "words": ["词语1", "词语2", "词语3", "词语4", "词语5", "词语6", "词语7", "词语8"],
-  "sentence": "一个句子。"
-}}
-"""
-
-    print("Generating content with Gemini...")
-    response = model.generate_content(prompt)
-
-    try:
-        cleaned_text = response.text.strip()
-        if cleaned_text.startswith("```json"):
-            cleaned_text = cleaned_text[7:]
-        if cleaned_text.endswith("```"):
-            cleaned_text = cleaned_text[:-3]
-        
-        data = json.loads(cleaned_text)
-        words = data["words"]
-        sentence = data["sentence"]
-    except (json.JSONDecodeError, KeyError) as e:
-        print(f"Error: Failed to parse response from Gemini.", file=sys.stderr)
-        print(f"Received text: {response.text}", file=sys.stderr)
-        print(f"Error details: {e}", file=sys.stderr)
-        sys.exit(1)
+    words, sentence = generate_sentence_and_words(selected_chars)
 
     grid, start_row = generate_grid(sentence, words, selected_chars)
 

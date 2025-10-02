@@ -2,9 +2,9 @@ import argparse
 import random
 import sys
 
-from exam_formatter import generate_exam_html
-from exam_record import filter_chars_by_score, filter_chars_by_days
-from words import get_lesson, parse_lesson_ranges
+from .exam_formatter import generate_exam_html
+from .exam_record import filter_chars_by_score, filter_chars_by_days
+from .words import get_lesson, parse_lesson_ranges
 
 
 

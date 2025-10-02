@@ -589,11 +589,21 @@ def generate_cloze_test(num_chars, lessons, output_filename, score_filter=None, 
             sentence = item['sentence']
             cloze_sentence = sentence.replace(word, '（ ）', 1)
             pairs.append((word, cloze_sentence))
-    except (json.JSONDecodeError, KeyError):
+    except (json.JSONDecodeError, KeyError) as e:
+        print(f"无法生成句子: {e}")
         pairs = [("错误", "无法生成句子")] * 5
 
     format_cloze_test_html(pairs, output_filename)
     return output_filename
+
+def get_learned_chars(conn):
+    """Fetches all unique characters that have a 'read' or 'write' record."""
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT DISTINCT character FROM records WHERE type IN ('read', 'write')")
+        return {row['character'] for row in cursor.fetchall()}
+    except sqlite3.OperationalError:
+        return set()
 
 def generate_find_words_puzzle(num_chars, lessons, output_filename, score_filter=None, days_filter=None, study_source=None):
     load_dotenv()
@@ -601,25 +611,19 @@ def generate_find_words_puzzle(num_chars, lessons, output_filename, score_filter
     if not api_key:
         raise ValueError("GEMINI_API_KEY not found in .env file")
     genai.configure(api_key=api_key)
+    model = genai.GenerativeModel("gemini-2.5-flash")
 
     if study_source == 'review':
         import fsrs_logic
-        
-        # Get all 'read' cards and calculate retrievability
         read_cards = []
         for (char, card_type), card in fsrs_logic.cards.items():
             if card_type == 'read':
                 retrievability = fsrs_logic.read_scheduler.get_card_retrievability(card, datetime.now(timezone.utc))
                 if retrievability is not None and retrievability > 0:
                     read_cards.append({'char': char, 'retrievability': float(retrievability)})
-        
-        # Sort by retrievability (lowest first)
         read_cards.sort(key=lambda x: x['retrievability'])
-        
-        # Get the characters
         char_pool = [card['char'] for card in read_cards]
 
-        # Filter out recently studied characters
         if days_filter is not None:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -629,7 +633,6 @@ def generate_find_words_puzzle(num_chars, lessons, output_filename, score_filter
             conn.close()
             char_pool = [char for char in char_pool if char not in recent_chars]
 
-        # Select the top `num_chars`
         selected_chars = char_pool[:num_chars]
     else:
         lesson_numbers = parse_lesson_ranges(lessons)
@@ -648,13 +651,23 @@ def generate_find_words_puzzle(num_chars, lessons, output_filename, score_filter
         num_to_select = min(num_chars, len(unique_chars))
         selected_chars = random.sample(unique_chars, k=num_to_select)
 
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    conn = get_db_connection()
+    learned_chars = get_learned_chars(conn)
+    conn.close()
+
+    allowed_chars = set(selected_chars).union(learned_chars).union(set("，。"))
     characters_str = "".join(selected_chars)
-    print(characters_str)
+    learned_chars_str = "".join(learned_chars)
+
     prompt = f"""
-我在给2年级的孩子准备中文生字复习，请根据以下汉字：'{characters_str}'
-1. 生成5-10个双字词语。这些词语要使用到列表中的汉字，可以使用1-2次。 
-2. 生成1个简单的句子，包含全部10个字。
+请根据以下汉字：
+- 学习汉字: '{characters_str}'
+- 已学汉字: '{learned_chars_str}'
+
+1. 生成8个双字词语。这些词语应该尽可能使用学习汉字列表中的汉字。
+2. 生成一个包含部分词语的简单句子。这个句子必须满足以下条件：
+   - 长度不能超过18个汉字。
+   - 只能包含学习汉字和已学汉字列表中的汉字。
 
 请以JSON格式返回，不要包含任何其他说明文字或代码块标记。结构如下：
 {{
@@ -662,22 +675,42 @@ def generate_find_words_puzzle(num_chars, lessons, output_filename, score_filter
   "sentence": "一个句子。"
 }}
 """
-    response = model.generate_content(prompt)
-    import json
-    try:
-        cleaned_text = response.text.strip()
-        if cleaned_text.startswith("```json"):
-            cleaned_text = cleaned_text[7:]
-        if cleaned_text.endswith("```"):
-            cleaned_text = cleaned_text[:-3]
-        data = json.loads(cleaned_text)
-        words = data["words"]
-        sentence = data["sentence"]
-    except (json.JSONDecodeError, KeyError):
-        # Fallback or error handling
-        words = ["错误"]*8
-        sentence = "无法生成句子"
+    print(prompt)
+    
+    MAX_RETRIES = 5
+    for attempt in range(MAX_RETRIES):
+        response = model.generate_content(prompt)
+        import json
+        try:
+            cleaned_text = response.text.strip()
+            if cleaned_text.startswith("```json"):
+                cleaned_text = cleaned_text[7:]
+            if cleaned_text.endswith("```"):
+                cleaned_text = cleaned_text[:-3]
+            data = json.loads(cleaned_text)
+            words = data["words"]
+            sentence = data["sentence"]
 
+            print(data)
+
+            if len(sentence) > 18:
+                continue
+
+            if not all(c in allowed_chars for c in sentence):
+                continue
+
+            grid, start_row = generate_grid(sentence, words, selected_chars)
+            format_find_words_html(words, sentence, grid, start_row, output_filename)
+            return output_filename
+
+        except (json.JSONDecodeError, KeyError) as e:
+            print(f"无法生成句子: {e}")
+            continue
+
+    # Fallback or error handling
+    words = ["错误"]*8
+    sentence = "无法生成句子"
     grid, start_row = generate_grid(sentence, words, selected_chars)
     format_find_words_html(words, sentence, grid, start_row, output_filename)
     return output_filename
+

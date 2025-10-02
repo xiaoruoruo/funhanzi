@@ -5,25 +5,16 @@ import sys
 import time
 
 import google.generativeai as genai
-from dotenv import load_dotenv
-
-from exam_formatter import generate_exam_html
-from exam_record import filter_chars_by_score, filter_chars_by_days
-from words import get_lesson, parse_lesson_ranges
-
+from .exam_formatter import generate_exam_html
+from .exam_record import filter_chars_by_score, filter_chars_by_days
+from .words import get_lesson, parse_lesson_ranges
+from .ai import get_gemini_model
 
 
 def main():
     """
     Main function to parse arguments and generate the exam.
     """
-    load_dotenv()
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        print("Error: GEMINI_API_KEY not found. Please set it in a .env file.", file=sys.stderr)
-        sys.exit(1)
-    genai.configure(api_key=api_key)
-
     parser = argparse.ArgumentParser(
         description="Generate a writing exam with words made from random Chinese characters."
     )
@@ -54,6 +45,8 @@ def main():
         help="Exclude characters tested in the last N days. Requires record.db."
     )
     args = parser.parse_args()
+
+    model = get_gemini_model()
 
     lesson_numbers = parse_lesson_ranges(args.lessons)
 
@@ -92,7 +85,7 @@ def main():
     
     print(f"Selected {len(selected_chars)} unique characters.")
 
-    model = genai.GenerativeModel('models/gemini-2.5-flash')
+
     
     remaining_chars = set(selected_chars)
     final_word_list = []
