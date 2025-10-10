@@ -113,12 +113,14 @@ def get_learned_chars(conn):
 
 
 from .ai import get_gemini_model
+from . import words_db
 
 
 def generate_sentence_and_words(selected_chars):
     """
-    Generates a sentence and a list of words using the Gemini API,
-    ensuring the sentence is not too long and contains only allowed characters.
+    Generates a sentence and a list of words, using Gemini for the sentence
+    and the local words database for words. It ensures the sentence is not
+    too long and contains only allowed characters.
     """
     model = get_gemini_model()
 
@@ -126,30 +128,49 @@ def generate_sentence_and_words(selected_chars):
     learned_chars = get_learned_chars(conn)
     conn.close()
 
-
     allowed_chars = set(selected_chars).union(learned_chars)
+
+    # Get words from the database
+    words = []
+    with words_db.get_conn() as conn:
+        for char in selected_chars:
+            words.extend(words_db.get_words_for_char(conn, char))
+
+    # Filter for 2-character words, unique, and select 8
+    two_char_words = []
+    for w in list(set(w for w in words if len(w) == 2)):
+        if any(c in selected_chars for c in w) and all(c in allowed_chars for c in w):
+            two_char_words.append(w)
+            
+    random.shuffle(two_char_words)
+    selected_words = two_char_words[:8]
+
+    if not selected_words:
+        print("Error: Could not find enough words to generate the puzzle.", file=sys.stderr)
+        sys.exit(1)
+
     characters_str = "".join(selected_chars)
     learned_chars_str = "".join(learned_chars)
+    words_str = ", ".join(selected_words)
 
     prompt = f"""
-请根据以下汉字：
+请根据以下汉字和词语：
 - 学习汉字: '{characters_str}'
 - 已学汉字: '{learned_chars_str}'
+- 词语列表: '{words_str}'
 
-1. 生成8个双字词语。这些词语应该尽可能使用学习汉字列表中的汉字。
-2. 生成一个包含部分词语的简单句子。这个句子必须满足以下条件：
+生成一个包含部分词语的简单句子。这个句子必须满足以下条件：
    - 长度不能超过{MAX_SENTENCE_LENGTH}个汉字。
    - 只能包含学习汉字和已学汉字列表中的汉字。
 
 请以JSON格式返回，不要包含任何其他说明文字或代码块标记。结构如下：
 {{
-  "words": ["词语1", "词语2", "词语3", "词语4", "词语5", "词语6", "词语7", "词语8"],
   "sentence": "一个句子。"
 }}
 """
 
     for attempt in range(MAX_RETRIES):
-        print(f"Generating content with Gemini (Attempt {attempt + 1}/{MAX_RETRIES})...")
+        print(f"Generating sentence with Gemini (Attempt {attempt + 1}/{MAX_RETRIES})...")
         response = model.generate_content(prompt)
 
         try:
@@ -160,7 +181,6 @@ def generate_sentence_and_words(selected_chars):
                 cleaned_text = cleaned_text[:-3]
 
             data = json.loads(cleaned_text)
-            words = data["words"]
             sentence = data["sentence"]
 
             if len(sentence) > MAX_SENTENCE_LENGTH:
@@ -171,7 +191,7 @@ def generate_sentence_and_words(selected_chars):
                 print("Warning: Sentence contains unlearned characters. Retrying.", file=sys.stderr)
                 continue
 
-            return words, sentence
+            return selected_words, sentence
 
         except (json.JSONDecodeError, KeyError) as e:
             print(f"Error: Failed to parse response from Gemini on attempt {attempt + 1}.", file=sys.stderr)

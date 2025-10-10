@@ -53,18 +53,23 @@ def init_db():
         conn.commit()
 
 
-def get_words_for_char(conn, char):
-    return [
+def get_words_for_char(conn, char, desired_words=10):
+    words = [
         row["word"] for row in conn.execute("SELECT word FROM words WHERE word LIKE ?", (f"%{char}%",))
     ]
+    if len(words) < desired_words:
+        seed_words_for_char(char, desired_words)
+        words = [
+            row["word"] for row in conn.execute("SELECT word FROM words WHERE word LIKE ?", (f"%{char}%",))
+        ]
+    return words
 
 
 def seed_words_for_char(char, desired_words=10):
     with get_conn() as conn:
-        existing_words = get_words_for_char(conn, char)
-        if len(existing_words) >= desired_words:
-            log.info(f"Skipping {char}, already has {len(existing_words)} words.")
-            return
+        existing_words = [
+            row["word"] for row in conn.execute("SELECT word FROM words WHERE word LIKE ?", (f"%{char}%",))
+        ]
 
     log.info(f"Generating words for {char}")
     model = ai.get_gemini_model()
