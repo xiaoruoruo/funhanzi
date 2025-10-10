@@ -5,6 +5,10 @@ import datetime
 import json
 from bs4 import BeautifulSoup
 import fsrs_logic
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = Flask(__name__)
 
@@ -265,6 +269,7 @@ def mark_study_done(study_id):
 
 @app.route('/study/generate/<study_type>')
 def generate_study(study_type):
+    logging.info(f"Generating study sheet of type: {study_type}")
     conn = db.get_db_connection()
     settings = conn.execute('SELECT * FROM settings').fetchall()
     conn.close()
