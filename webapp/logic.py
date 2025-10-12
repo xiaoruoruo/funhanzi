@@ -3,12 +3,12 @@ import random
 import sqlite3
 import sys
 from datetime import date, timedelta, datetime, timezone
-import google.generativeai as genai
 from dotenv import load_dotenv
 
 from . import fsrs_logic
 from . import words
 from . import formatter
+from . import ai
 
 DB_FILE = "webapp/database.db"
 
@@ -87,12 +87,6 @@ def generate_read_exam(num_chars, lessons, output_filename, score_filter=None, d
     return output_filename
 
 def generate_write_exam(num_chars, lessons, output_filename, score_filter=None, days_filter=None, character_list=None):
-    load_dotenv()
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY not found in .env file")
-    genai.configure(api_key=api_key)
-
     if character_list is not None:
         char_pool = character_list
     else:
@@ -112,7 +106,7 @@ def generate_write_exam(num_chars, lessons, output_filename, score_filter=None, 
     num_to_select = min(num_chars, len(unique_chars))
     selected_chars = random.sample(unique_chars, k=num_to_select)
 
-    model = genai.GenerativeModel('models/gemini-2.5-flash')
+    model = ai.get_gemini_model()
     
     remaining_chars = set(selected_chars)
     final_word_list = []
@@ -133,8 +127,12 @@ def generate_write_exam(num_chars, lessons, output_filename, score_filter=None, 
         )
 
         try:
-            response = model.generate_content(prompt)
-            text_response = response.text.strip().replace('`', '')
+            response = ai.generate_content(model, prompt)
+            if response is not None:
+                text_response = response.text.strip().replace('`', '')
+            else:
+                print(f"Failed to generate content for prompt: {prompt}, continuing...")
+                continue
         except ValueError:
             print(f"ValueError when generating words for prompt: {prompt}, continuing...")
             continue
@@ -167,20 +165,18 @@ def generate_write_exam(num_chars, lessons, output_filename, score_filter=None, 
 
 def _generate_study_sheet_from_chars(selected_chars, output_filename):
     # Generate pinyin and words using Gemini
-    load_dotenv()
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY not found in .env file")
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    model = ai.get_gemini_model()
     
     characters_data = []
     for char in selected_chars:
         prompt = f"请为“{char}”这个字，提供它的拼音，以及一个最常见的、由两个字组成的词语。请用这个格式返回：拼音，词语。例如：pīn yīn, 词语"
-        response = model.generate_content(prompt)
+        response = ai.generate_content(model, prompt)
         try:
-            pinyin, word = response.text.strip().split(",", 1)
-            characters_data.append((char, pinyin.strip(), word.strip()))
+            if response is not None:
+                pinyin, word = response.text.strip().split(",", 1)
+                characters_data.append((char, pinyin.strip(), word.strip()))
+            else:
+                characters_data.append((char, "N/A", "N/A"))
         except ValueError:
             characters_data.append((char, "N/A", "N/A"))
 
@@ -282,12 +278,6 @@ def generate_grid(sentence, words, filler_chars):
     return grid, start_row
 
 def generate_cloze_test(num_chars, lessons, output_filename, score_filter=None, days_filter=None, study_source=None):
-    load_dotenv()
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY not found in .env file")
-    genai.configure(api_key=api_key)
-
     if study_source == 'review':
         
         read_cards = []
@@ -326,7 +316,7 @@ def generate_cloze_test(num_chars, lessons, output_filename, score_filter=None, 
         num_to_select = min(num_chars, len(unique_chars))
         selected_chars = random.sample(unique_chars, k=num_to_select)
 
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    model = ai.get_gemini_model()
     characters_str = "".join(selected_chars)
     prompt = f"""
     我在给2年级的孩子准备中文生字复习，请根据以下汉字：'{characters_str}'
@@ -344,15 +334,19 @@ def generate_cloze_test(num_chars, lessons, output_filename, score_filter=None, 
       ]
     }}
     """
-    response = model.generate_content(prompt)
+    response = ai.generate_content(model, prompt)
     import json
     try:
-        cleaned_text = response.text.strip()
-        if cleaned_text.startswith("```json"):
-            cleaned_text = cleaned_text[7:]
-        if cleaned_text.endswith("```"):
-            cleaned_text = cleaned_text[:-3]
-        data = json.loads(cleaned_text)
+        if response is not None:
+            cleaned_text = response.text.strip()
+            if cleaned_text.startswith("```json"):
+                cleaned_text = cleaned_text[7:]
+            if cleaned_text.endswith("```"):
+                cleaned_text = cleaned_text[:-3]
+            data = json.loads(cleaned_text)
+        else:
+            print("Failed to generate cloze test data")
+            data = {"pairs": [{"word": "错误", "sentence": "无法生成句子"}] * 5}
         pairs = []
         for item in data['pairs']:
             word = item['word']
@@ -380,12 +374,7 @@ def generate_find_words_puzzle(num_chars, lessons, output_filename, score_filter
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
     from . import words_db
 
-    load_dotenv()
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY not found in .env file")
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    model = ai.get_gemini_model()
 
     if study_source == 'review':
 
@@ -478,26 +467,30 @@ def generate_find_words_puzzle(num_chars, lessons, output_filename, score_filter
     print(prompt)
     MAX_RETRIES = 5
     for attempt in range(MAX_RETRIES):
-        response = model.generate_content(prompt)
+        response = ai.generate_content(model, prompt)
         import json
         try:
-            cleaned_text = response.text.strip()
-            if cleaned_text.startswith("```json"):
-                cleaned_text = cleaned_text[7:]
-            if cleaned_text.endswith("```"):
-                cleaned_text = cleaned_text[:-3]
-            data = json.loads(cleaned_text)
-            sentence = data["sentence"]
+            if response is not None:
+                cleaned_text = response.text.strip()
+                if cleaned_text.startswith("```json"):
+                    cleaned_text = cleaned_text[7:]
+                if cleaned_text.endswith("```"):
+                    cleaned_text = cleaned_text[:-3]
+                data = json.loads(cleaned_text)
+                sentence = data["sentence"]
 
-            if len(sentence) > 18:
+                if len(sentence) > 18:
+                    continue
+
+                if not all(c in allowed_chars for c in sentence):
+                    continue
+
+                grid, start_row = generate_grid(sentence, selected_words, selected_chars)
+                formatter.format_find_words_html(selected_words, sentence, grid, start_row, output_filename)
+                return output_filename
+            else:
+                print(f"Failed to generate content for puzzle, attempt {attempt + 1}")
                 continue
-
-            if not all(c in allowed_chars for c in sentence):
-                continue
-
-            grid, start_row = generate_grid(sentence, selected_words, selected_chars)
-            formatter.format_find_words_html(selected_words, sentence, grid, start_row, output_filename)
-            return output_filename
 
         except (json.JSONDecodeError, KeyError) as e:
             print(f"无法生成句子: {e}")
