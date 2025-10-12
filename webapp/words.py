@@ -2,7 +2,6 @@ import os
 import sys
 
 _lessons = []
-
 # Get the directory where this script is located
 script_dir = os.path.dirname(os.path.abspath(__file__))
 # Construct the full path to words.txt
@@ -21,7 +20,6 @@ def get_lesson(lesson_number):
     Lesson numbers are 1-based.
     Returns None if lesson_number is out of bounds.
     """
-    # Adjust for 0-based index
     index = lesson_number - 1
     if 0 <= index < len(_lessons):
         return _lessons[index]

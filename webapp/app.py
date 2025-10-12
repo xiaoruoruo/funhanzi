@@ -1,11 +1,10 @@
 from flask import Flask, render_template, request, redirect, url_for
-import db
-import logic
+from . import db
+from . import logic
+from . import fsrs_logic
 import datetime
-import json
-from bs4 import BeautifulSoup
-import fsrs_logic
 import logging
+from bs4 import BeautifulSoup
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -476,4 +475,4 @@ if __name__ == '__main__':
     fsrs_logic.rebuild_cards_from_records(conn)
     conn.commit()
     conn.close()
-    app.run(debug=True)
+    # app.run(debug=True) # This will be run from the top-level run.py

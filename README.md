@@ -81,7 +81,7 @@ The characters you will study lives in `words.txt`. You can change the content, 
 Then run the web server:
 
 ```
-uv run webapp/app.py
+uv run run.py
 ```
 
 Navigate to http://127.0.0.1:5000/.

@@ -1,9 +1,8 @@
-
 import datetime
 import json
 from fsrs import Scheduler, Card, Rating
-import db
-import logic
+
+from . import words
 
 # FSRS Schedulers
 read_scheduler = Scheduler(desired_retention=0.9)
@@ -84,10 +83,10 @@ def rebuild_cards_from_records(conn):
     lesson_range_str = settings_dict.get('lesson_range', '1-10')
     
     # Get all characters from the specified lessons
-    lesson_numbers = logic.parse_lesson_ranges(lesson_range_str)
+    lesson_numbers = words.parse_lesson_ranges(lesson_range_str)
     characters = []
     for num in lesson_numbers:
-        lesson_chars = logic.get_lesson(num)
+        lesson_chars = words.get_lesson(num)
         if lesson_chars:
             characters.extend(list(lesson_chars))
     unique_characters = sorted(list(set(characters)))
