@@ -27,7 +27,6 @@ def exam():
 def generate_exam(exam_type):
     conn = db.get_db_connection()
     settings = conn.execute('SELECT * FROM settings').fetchall()
-    conn.close()
     settings_dict = {s['key']: s['value'] for s in settings}
     
     if exam_type == 'read':
@@ -40,13 +39,14 @@ def generate_exam(exam_type):
     output_filename = f"webapp/static/exams/{exam_type}_{timestamp}.html"
 
     if exam_type == 'read':
-        logic.generate_read_exam(num_chars, lesson_range, output_filename)
+        logic.create_read_exam(conn, num_chars, lesson_range, output_filename)
     elif exam_type == 'write':
-        logic.generate_write_exam(num_chars, lesson_range, output_filename)
+        logic.create_write_exam(conn, num_chars, lesson_range, output_filename)
     else:
+        conn.close()  # Close connection before returning error
         return "Invalid exam type", 400
 
-    conn = db.get_db_connection()
+    # Database insertion remains in app.py for web request side effects
     conn.execute("INSERT INTO exams (type, filename) VALUES (?, ?)",
                  (exam_type, output_filename.replace('webapp/', '')))
     conn.commit()
@@ -58,39 +58,29 @@ def generate_exam(exam_type):
 def generate_review_exam(exam_type):
     conn = db.get_db_connection()
     settings = conn.execute('SELECT * FROM settings').fetchall()
-    conn.close()
     settings_dict = {s['key']: s['value'] for s in settings}
-
-    # Get due characters
-    due_chars = []
-    today = datetime.datetime.now(datetime.timezone.utc)
-    for (char, card_type), card in fsrs_logic.cards.items():
-        if card_type == exam_type and card.due <= today:
-            due_chars.append(char)
-
-    if not due_chars:
-        # Handle case with no due characters, maybe flash a message
-        return redirect(url_for('exam'))
 
     if exam_type == 'read':
         num_chars = int(settings_dict.get('read_exam_chars', 100))
     else:
         num_chars = int(settings_dict.get('write_exam_chars', 50))
-    lesson_range = settings_dict.get('lesson_range', '1-10') # Keep for header text
+    
+    lesson_range = settings_dict.get('lesson_range', '1-10')
 
     timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
     output_filename = f"webapp/static/exams/{exam_type}_review_{timestamp}.html"
 
-    if exam_type == 'read':
-        logic.generate_read_exam(num_chars, lesson_range, output_filename, character_list=due_chars)
-    elif exam_type == 'write':
-        logic.generate_write_exam(num_chars, lesson_range, output_filename, character_list=due_chars)
-    else:
-        return "Invalid exam type", 400
+    # Use the new orchestrator function in logic.py
+    result_filename = logic.create_review_exam(conn, exam_type, num_chars, lesson_range, output_filename)
 
-    conn = db.get_db_connection()
+    if result_filename is None:
+        conn.close()
+        # Handle case with no due characters, maybe flash a message
+        return redirect(url_for('exam'))
+
+    # Database insertion remains in app.py for web request side effects
     conn.execute("INSERT INTO exams (type, filename) VALUES (?, ?)",
-                 (f"{exam_type}", output_filename.replace('webapp/', '')))
+                 (f"{exam_type}_review", output_filename.replace('webapp/', '')))
     conn.commit()
     conn.close()
 
@@ -271,7 +261,6 @@ def generate_study(study_type):
     logging.info(f"Generating study sheet of type: {study_type}")
     conn = db.get_db_connection()
     settings = conn.execute('SELECT * FROM settings').fetchall()
-    conn.close()
     settings_dict = {s['key']: s['value'] for s in settings}
     
     num_chars = int(settings_dict.get('study_chars', 20))
@@ -280,93 +269,31 @@ def generate_study(study_type):
     timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
     output_filename = f"webapp/static/studies/{study_type}_{timestamp}.html"
 
+    # Refactored to use logic.py orchestrator functions
     if study_type == 'chars':
         study_source = settings_dict.get('study_source', 'basic')
         if study_source == 'review':
             days_filter = int(settings_dict.get('failed_recency_days', 8))
-            logic.generate_review_study_sheet(num_chars, output_filename, days_filter=days_filter)
+            logic.create_study_review_sheet(conn, num_chars, output_filename, days_filter=days_filter)
         else:
-            logic.generate_study_chars_sheet(num_chars, lesson_range, output_filename)
+            logic.create_study_chars_sheet(conn, num_chars, lesson_range, output_filename)
     elif study_type == 'failed':
         failed_threshold = int(settings_dict.get('failed_threshold', 5))
         failed_recency_days = int(settings_dict.get('failed_recency_days', 8))
-        
-        conn = db.get_db_connection()
-        cutoff_date = (datetime.date.today() - datetime.timedelta(days=failed_recency_days)).strftime('%Y-%m-%d')
-        
-        # Get characters where the most recent score for 'read' is below the threshold
-        read_query = '''
-            WITH RankedRecords AS (
-                SELECT
-                    character,
-                    score,
-                    ROW_NUMBER() OVER (PARTITION BY character ORDER BY date DESC, id DESC) as rn
-                FROM records
-                WHERE date >= ? AND type = 'read'
-            )
-            SELECT character
-            FROM RankedRecords
-            WHERE rn = 1 AND score < ?
-        '''
-        read_records = conn.execute(read_query, (cutoff_date, failed_threshold)).fetchall()
-        
-        # Get characters where the most recent score for 'write' is below the threshold
-        write_query = '''
-            WITH RankedRecords AS (
-                SELECT
-                    character,
-                    score,
-                    ROW_NUMBER() OVER (PARTITION BY character ORDER BY date DESC, id DESC) as rn
-                FROM records
-                WHERE date >= ? AND type = 'write'
-            )
-            SELECT character
-            FROM RankedRecords
-            WHERE rn = 1 AND score < ?
-        '''
-        write_records = conn.execute(write_query, (cutoff_date, failed_threshold)).fetchall()
-        conn.close()
-        
-        failed_read_chars = sorted(list(set([record['character'] for record in read_records])))
-        failed_write_chars = sorted(list(set([record['character'] for record in write_records])))
-        
-        # Limit the number of characters if necessary
-        if len(failed_read_chars) + len(failed_write_chars) > num_chars:
-            # This is a simple way to limit, might need a more sophisticated approach
-            # if you want to prioritize or balance the lists.
-            total_chars = len(failed_read_chars) + len(failed_write_chars)
-            while total_chars > num_chars:
-                if len(failed_read_chars) > len(failed_write_chars):
-                    failed_read_chars.pop()
-                else:
-                    failed_write_chars.pop()
-                total_chars -= 1
-
-        if not failed_read_chars and not failed_write_chars:
-            # Handle case with no failed characters, maybe flash a message
-            return redirect(url_for('study'))
-
-        logic.generate_failed_study_sheet(
-            failed_read_chars=failed_read_chars,
-            failed_write_chars=failed_write_chars,
-            output_filename=output_filename,
-            header_text=f"Characters needing review from the last {failed_recency_days} days"
-        )
-
+        logic.create_failed_study_sheet(conn, num_chars, output_filename, threshold=failed_threshold, recency_days=failed_recency_days)
     elif study_type == 'words':
         study_source = settings_dict.get('study_source', 'basic')
         days_filter = int(settings_dict.get('failed_recency_days', 8))
-        logic.generate_find_words_puzzle(num_chars, lesson_range, output_filename, study_source=study_source, days_filter=days_filter)
-
+        logic.create_find_words_puzzle(conn, num_chars, lesson_range, output_filename, study_source=study_source, days_filter=days_filter)
     elif study_type == 'cloze':
         study_source = settings_dict.get('study_source', 'basic')
         days_filter = int(settings_dict.get('failed_recency_days', 8))
-        logic.generate_cloze_test(num_chars, lesson_range, output_filename, study_source=study_source, days_filter=days_filter)
-
+        logic.create_cloze_test(conn, num_chars, lesson_range, output_filename, study_source=study_source, days_filter=days_filter)
     else:
+        conn.close()  # Close connection before returning error
         return "Invalid study type", 400
 
-    conn = db.get_db_connection()
+    # Database insertion remains in app.py for web request side effects
     conn.execute("INSERT INTO studies (type, filename) VALUES (?, ?)",
                  (study_type, output_filename.replace('webapp/', '')))
     conn.commit()
