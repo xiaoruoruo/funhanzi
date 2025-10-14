@@ -104,7 +104,17 @@ def create_study_review_sheet(conn, num_chars, output_filename, days_filter=None
     if days_filter is not None:
         # Remove characters that have been recently studied
         s.remove_recent_records_by_type(days_filter, ["readstudy", "writestudy"])
-    selected_chars = s.take(num_chars)
+    
+    # Get all characters sorted by lowest retrievability
+    all_sorted_chars = s.get_all()
+
+    # Take a larger pool of characters, e.g., 3 times the number needed, to introduce randomness
+    pool_size = min(len(all_sorted_chars), num_chars * 3)
+    character_pool = all_sorted_chars[:pool_size]
+
+    # Randomly select from the pool
+    import random
+    selected_chars = random.sample(character_pool, min(len(character_pool), num_chars))
 
     # Generate
     content = study_char_word.generate_content(selected_chars)
@@ -138,16 +148,17 @@ def create_study_review_sheet(conn, num_chars, output_filename, days_filter=None
     return output_filename
 
 def create_cloze_test(conn, num_chars, lessons, output_filename, score_filter=None, days_filter=None, study_source=None, header_text=None):
-    """
-    Orchestrates the creation of cloze tests.
-    """
-    # Select
     if study_source == 'review':
         s = selection.Selection(conn)
-        selected_chars = s.from_fsrs('read', due_only=False).retrievability(min_val=-1, max_val=1).lowest_retrievability().take(num_chars)
+        s.from_fsrs('read', due_only=False).retrievability(min_val=-1, max_val=1).lowest_retrievability()
         if days_filter is not None:
-            recent_chars = s.remove_recent_records_by_type(days_filter, ["readstudy"]).get_all()
-            selected_chars = [c for c in selected_chars if c not in recent_chars]
+            s.remove_recent_records_by_type(days_filter, ["readstudy"])
+
+        all_sorted_chars = s.get_all()
+        pool_size = min(len(all_sorted_chars), num_chars * 3)
+        character_pool = all_sorted_chars[:pool_size]
+        import random
+        selected_chars = random.sample(character_pool, min(len(character_pool), num_chars))
     else:
         s = selection.Selection(conn)
         
@@ -175,10 +186,15 @@ def create_find_words_puzzle(conn, num_chars, lessons, output_filename, score_fi
     # Select
     if study_source == 'review':
         s = selection.Selection(conn)
-        selected_chars = s.from_fsrs('read', due_only=False).retrievability(min_val=-1, max_val=1).lowest_retrievability().take(num_chars)
+        s.from_fsrs('read', due_only=False).retrievability(min_val=-1, max_val=1).lowest_retrievability()
         if days_filter is not None:
-            recent_chars = s.remove_recent_records_by_type(days_filter, ["readstudy"]).get_all()
-            selected_chars = [c for c in selected_chars if c not in recent_chars]
+            s.remove_recent_records_by_type(days_filter, ["readstudy"])
+
+        all_sorted_chars = s.get_all()
+        pool_size = min(len(all_sorted_chars), num_chars * 3)
+        character_pool = all_sorted_chars[:pool_size]
+        import random
+        selected_chars = random.sample(character_pool, min(len(character_pool), num_chars))
     else:
         s = selection.Selection(conn)
         
