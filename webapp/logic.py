@@ -100,7 +100,7 @@ def create_study_review_sheet(conn, num_chars, output_filename, days_filter=None
     """
     # Select
     s = selection.Selection(conn)
-    s.from_fsrs('write', due_only=False).retrievability(min=-1, max=1).lowest_retrievability()
+    s.from_fsrs('write', due_only=False).retrievability(min_val=-1, max_val=1).lowest_retrievability()
     if days_filter is not None:
         # Remove characters that have been recently studied
         s.remove_recent_records_by_type(days_filter, ["readstudy", "writestudy"])
@@ -144,7 +144,7 @@ def create_cloze_test(conn, num_chars, lessons, output_filename, score_filter=No
     # Select
     if study_source == 'review':
         s = selection.Selection(conn)
-        selected_chars = s.from_fsrs('read', due_only=False).retrievability(min=-1, max=1).lowest_retrievability().take(num_chars)
+        selected_chars = s.from_fsrs('read', due_only=False).retrievability(min_val=-1, max_val=1).lowest_retrievability().take(num_chars)
         if days_filter is not None:
             recent_chars = s.remove_recent_records_by_type(days_filter, ["readstudy"]).get_all()
             selected_chars = [c for c in selected_chars if c not in recent_chars]
@@ -175,7 +175,7 @@ def create_find_words_puzzle(conn, num_chars, lessons, output_filename, score_fi
     # Select
     if study_source == 'review':
         s = selection.Selection(conn)
-        selected_chars = s.from_fsrs('read', due_only=False).retrievability(min=-1, max=1).lowest_retrievability().take(num_chars)
+        selected_chars = s.from_fsrs('read', due_only=False).retrievability(min_val=-1, max_val=1).lowest_retrievability().take(num_chars)
         if days_filter is not None:
             recent_chars = s.remove_recent_records_by_type(days_filter, ["readstudy"]).get_all()
             selected_chars = [c for c in selected_chars if c not in recent_chars]
