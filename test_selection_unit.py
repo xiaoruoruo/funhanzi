@@ -50,7 +50,7 @@ def test_selection_api():
     try:
         s5 = Selection(conn)
         selected_chars = s5.from_lesson_range("1-10") \
-            .remove_recent_records(3, types=['read', 'write']) \
+            .remove_recent_records_by_type(3, ['read', 'write']) \
             .remove_score_greater("write", 5) \
             .random(10)
         print(f"Filtered characters (Write Exam example): {selected_chars}")
@@ -63,7 +63,7 @@ def test_selection_api():
         s6 = Selection(conn)
         review_chars = s6.from_fsrs("write") \
             .lowest_retrievability() \
-            .remove_recent_records(1, types=['readstudy', 'writestudy']) \
+            .remove_recent_records_by_type(1, ['readstudy', 'writestudy']) \
             .take(5)
         print(f"Review characters (lowest retrievability): {review_chars}")
     except Exception as e:

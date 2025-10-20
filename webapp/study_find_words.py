@@ -41,10 +41,10 @@ def generate_content(characters: List[str]) -> FindWordsContent:
     model = ai.get_gemini_model()
 
     # Get words from the database
-    words = []
+    words_with_scores = []
     with words_db.get_conn() as conn:
         for char in characters:
-            words.extend(words_db.get_words_for_char(conn, char))
+            words_with_scores.extend(words_db.get_words_for_char(conn, char))
 
     # Import here to avoid circular dependencies
     from . import db
@@ -53,14 +53,19 @@ def generate_content(characters: List[str]) -> FindWordsContent:
     conn.close()
     allowed_chars = set(characters).union(learned_chars)
 
-    # Filter for 2-character words, unique, and select 8
-    two_char_words = []
-    for w in list(set(w for w in words if len(w) == 2)):
-        if any(c in characters for c in w) and all(c in allowed_chars for c in w):
-            two_char_words.append(w)
+    # Filter for 2-character words, unique, and select 8 with score >= 0.8
+    two_char_words_filtered = []
+    seen_words = set()
+    for w, score in words_with_scores:
+        if len(w) == 2 and score >= 0.8 and w not in seen_words:
+            # Check if any character in the word is from the 'characters' list
+            # and all characters in the word are either 'characters' or 'learned_chars'
+            if any(c in characters for c in w) and all(c in allowed_chars for c in w):
+                two_char_words_filtered.append(w)
+                seen_words.add(w)
 
-    random.shuffle(two_char_words)
-    selected_words = two_char_words[:8]
+    random.shuffle(two_char_words_filtered)
+    selected_words = two_char_words_filtered[:8]
 
     if not selected_words:
         print("Error: Could not find enough words to generate the puzzle.", file=sys.stderr)

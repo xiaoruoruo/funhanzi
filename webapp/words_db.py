@@ -54,15 +54,15 @@ def init_db():
 
 
 def get_words_for_char(conn, char, desired_words=10):
-    words = [
-        row["word"] for row in conn.execute("SELECT word FROM words WHERE word LIKE ?", (f"%{char}%",))
+    words_with_scores = [
+        (row["word"], row["score"]) for row in conn.execute("SELECT word, score FROM words WHERE word LIKE ?", (f"%{char}%",))
     ]
-    if len(words) < desired_words:
+    if len(words_with_scores) < desired_words:
         seed_words_for_char(char, desired_words)
-        words = [
-            row["word"] for row in conn.execute("SELECT word FROM words WHERE word LIKE ?", (f"%{char}%",))
+        words_with_scores = [
+            (row["word"], row["score"]) for row in conn.execute("SELECT word, score FROM words WHERE word LIKE ?", (f"%{char}%",))
         ]
-    return words
+    return words_with_scores
 
 
 def seed_words_for_char(char, desired_words=10):
