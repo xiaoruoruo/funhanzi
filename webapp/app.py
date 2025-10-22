@@ -134,9 +134,14 @@ def record_exam(exam_id):
         for char, score in request.form.items():
             if char.startswith('score_'):
                 character = char.split('_', 1)[1]
+                record_type = exam['type']
+                if record_type == 'read_review':
+                    record_type = 'read'
+                elif record_type == 'write_review':
+                    record_type = 'write'
                 conn.execute(
                     "INSERT INTO records (character, type, score, date) VALUES (?, ?, ?, ?)",
-                    (character, exam['type'], int(score), today_str)
+                    (character, record_type, int(score), today_str)
                 )
         
         conn.execute("UPDATE exams SET recorded = TRUE WHERE id = ?", (exam_id,))

@@ -249,7 +249,8 @@ def create_write_exam(conn, num_chars, lessons, output_filename, score_filter=No
         selected_chars = s.from_lesson_range(lessons).random(num_chars)
 
     # Generate
-    word_list = study_exam_write.generate_content(selected_chars)
+    lesson_chars = selection.Selection(conn).from_lesson_range(lessons).get_all()
+    word_list = study_exam_write.generate_content(conn, selected_chars, lesson_chars)
 
     # Format
     final_title = title if title is not None else "Writing Test"
