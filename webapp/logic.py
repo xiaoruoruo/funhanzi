@@ -7,11 +7,11 @@ from . import selection
 from . import study_char_word
 from . import study_cloze
 from . import study_find_words
-from . import study_exam_write
 from . import formatter_exam
 from . import formatter_char_word
 from . import formatter_cloze
 from . import formatter_find_words
+from . import words_db
 
 def create_study_chars_sheet(conn, num_chars, lessons, output_filename, score_filter=None, days_filter=None, character_list=None, header_text=None):
     """
@@ -125,28 +125,6 @@ def create_study_review_sheet(conn, num_chars, output_filename, days_filter=None
 
     return output_filename
 
-    if days_filter is not None:
-        recent_chars = s.remove_recent_records_by_type(days_filter, ["readstudy"]).get_all()
-        selected_chars = [c for c in selected_chars if c not in recent_chars]
-    else:
-        s = selection.Selection(conn)
-        
-        s = s.from_lesson_range(lessons)
-        if score_filter is not None:
-            s = s.remove_score_greater("read", score_filter)
-        if days_filter is not None:
-            s = s.remove_any_recent_records(days_filter)
-        
-        selected_chars = s.random(num_chars)
-
-    # Generate
-    content = study_cloze.generate_content(selected_chars)
-
-    # Format
-    formatter_cloze.format_html(content, output_filename, header_text)
-
-    return output_filename
-
 def create_cloze_test(conn, num_chars, lessons, output_filename, score_filter=None, days_filter=None, study_source=None, header_text=None):
     if study_source == 'review':
         s = selection.Selection(conn)
@@ -250,7 +228,7 @@ def create_write_exam(conn, num_chars, lessons, output_filename, score_filter=No
 
     # Generate
     lesson_chars = selection.Selection(conn).from_lesson_range(lessons).get_all()
-    word_list = study_exam_write.generate_content(conn, selected_chars, lesson_chars)
+    word_list = words_db.generate_exam_words(conn, selected_chars, lesson_chars)
 
     # Format
     final_title = title if title is not None else "Writing Test"
