@@ -3,6 +3,8 @@ This module orchestrates the full "select -> generate -> format" pipeline for bo
 It imports from the new modules that contain the specific logic for each step.
 """
 
+import random
+
 from . import selection
 from . import study_char_word
 from . import study_cloze
@@ -11,7 +13,7 @@ from . import formatter_exam
 from . import formatter_char_word
 from . import formatter_cloze
 from . import formatter_find_words
-from . import words_db
+from . import words_gen
 
 def create_study_chars_sheet(conn, num_chars, lessons, output_filename, score_filter=None, days_filter=None, character_list=None, header_text=None):
     """
@@ -112,8 +114,6 @@ def create_study_review_sheet(conn, num_chars, output_filename, days_filter=None
     pool_size = min(len(all_sorted_chars), num_chars * 3)
     character_pool = all_sorted_chars[:pool_size]
 
-    # Randomly select from the pool
-    import random
     selected_chars = random.sample(character_pool, min(len(character_pool), num_chars))
 
     # Generate
@@ -135,7 +135,6 @@ def create_cloze_test(conn, num_chars, lessons, output_filename, score_filter=No
         all_sorted_chars = s.get_all()
         pool_size = min(len(all_sorted_chars), num_chars * 3)
         character_pool = all_sorted_chars[:pool_size]
-        import random
         selected_chars = random.sample(character_pool, min(len(character_pool), num_chars))
     else:
         s = selection.Selection(conn)
@@ -149,7 +148,7 @@ def create_cloze_test(conn, num_chars, lessons, output_filename, score_filter=No
         selected_chars = s.random(num_chars)
 
     # Generate
-    content = study_cloze.generate_content(selected_chars)
+    content = study_cloze.generate_content(conn, selected_chars)
 
     # Format
     formatter_cloze.format_html(content, output_filename, header_text)
@@ -171,7 +170,6 @@ def create_find_words_puzzle(conn, num_chars, lessons, output_filename, score_fi
         all_sorted_chars = s.get_all()
         pool_size = min(len(all_sorted_chars), num_chars * 3)
         character_pool = all_sorted_chars[:pool_size]
-        import random
         selected_chars = random.sample(character_pool, min(len(character_pool), num_chars))
     else:
         s = selection.Selection(conn)
@@ -227,8 +225,8 @@ def create_write_exam(conn, num_chars, lessons, output_filename, score_filter=No
         selected_chars = s.from_lesson_range(lessons).random(num_chars)
 
     # Generate
-    lesson_chars = selection.Selection(conn).from_lesson_range(lessons).get_all()
-    word_list = words_db.generate_exam_words(conn, selected_chars, lesson_chars)
+    word_list = words_db.generate_exam_words(conn, selected_chars)
+    random.shuffle(word_list)
 
     # Format
     final_title = title if title is not None else "Writing Test"
