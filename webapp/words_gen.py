@@ -85,6 +85,8 @@ def generate_words_max_score(conn, characters: List[str]) -> List[str]:
         best_score = -float('inf')  # Initialize to negative infinity
         
         for word, word_db_score in candidate_words:
+            if word_db_score < 0.8: continue
+            
             # Calculate the total score for this word based on character scores
             total_score = 0
             word_chars = set(word)

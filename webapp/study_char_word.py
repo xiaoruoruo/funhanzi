@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from typing import List
-import random
 from . import ai
+from . import words_gen
+from . import db
 
 
 @dataclass
@@ -21,32 +22,39 @@ def generate_content(characters: List[str]) -> List[CharWordEntry]:
     Returns:
         List of CharWordEntry objects containing character, pinyin, and word
     """
-    # Generate pinyin and words using Gemini
+    conn = db.get_db_connection()
+    generated_words = words_gen.generate_words_max_score(conn, characters)
+    conn.close()
+
     model = ai.get_gemini_model()
     
-    characters_data = []
-    for char in characters:
-        prompt = f"请为“{char}”这个字，提供它的拼音，以及一个最常见的、由两个字组成的词语。请用这个格式返回：拼音，词语。例如：pīn yīn, 词语"
-        response = ai.generate_content(model, prompt)
+    # Create a single prompt for all words
+    prompt = "请为以下词语提供拼音，每个词语一行，格式为：词语, pīn yīn\n"
+    for word in generated_words:
+        prompt += f"{word}\n"
+
+    response = ai.generate_content(model, prompt)
+    pinyin_map = {}
+    if response:
         try:
-            if response is not None:
-                pinyin, word = response.text.strip().split(",", 1)
-                characters_data.append(CharWordEntry(
-                    char=char,
-                    pinyin=pinyin.strip(),
-                    word=word.strip()
-                ))
-            else:
-                characters_data.append(CharWordEntry(
-                    char=char,
-                    pinyin="N/A",
-                    word="N/A"
-                ))
-        except ValueError:
-            characters_data.append(CharWordEntry(
-                char=char,
-                pinyin="N/A",
-                word="N/A"
-            ))
+            lines = response.text.strip().split('\n')
+            for line in lines:
+                parts = line.split(',')
+                if len(parts) == 2:
+                    word = parts[0].strip()
+                    pinyin = parts[1].strip()
+                    pinyin_map[word] = pinyin
+        except Exception as e:
+            print(f"Error parsing Gemini response: {e}")
+
+    characters_data = []
+    for i, char in enumerate(characters):
+        word = generated_words[i] if i < len(generated_words) else char
+        pinyin = pinyin_map.get(word, "N/A")
+        characters_data.append(CharWordEntry(
+            char=char,
+            pinyin=pinyin,
+            word=word
+        ))
 
     return characters_data
