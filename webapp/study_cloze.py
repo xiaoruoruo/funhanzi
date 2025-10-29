@@ -23,8 +23,8 @@ def calculate_sentence_score(sentence: str) -> float:
     """
     Calculate the score for a sentence based on character FSRS retrievability scores.
     For each character in the sentence, get the FSRS retrievability score (type "read").
-    Calculate the score as: SUM(character_score - 90 for each character's score).
-    Here 90 is a threshold where a character is considered good enough.
+    Calculate the score as: SUM(character_score - 90% for each character's score).
+    Here 90% is a threshold where a character is considered good enough.
     """
     total_score = 0
     sentence_chars = set(sentence)
@@ -37,7 +37,7 @@ def calculate_sentence_score(sentence: str) -> float:
             retrievability = fsrs_logic.read_scheduler.get_card_retrievability(card, today)
         
         char_score = retrievability if retrievability is not None else 0
-        total_score += (char_score - 90)
+        total_score += (char_score - 0.9)
     
     return total_score
 

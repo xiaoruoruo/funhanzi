@@ -1,13 +1,16 @@
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List
 import random
 import sys
-import os
-import sqlite3
-from . import ai
-from . import words_db
-import json
+from google import genai
+from pydantic import BaseModel
 
+from . import words_db
+from . import db
+from . import selection
+
+class SentencesResponse(BaseModel):
+    sentences: List[str]
 
 @dataclass
 class FindWordsContent:
@@ -16,13 +19,8 @@ class FindWordsContent:
 
 
 def get_learned_chars(conn):
-    """Fetches all unique characters that have a 'read' or 'write' record."""
-    cursor = conn.cursor()
-    try:
-        cursor.execute("SELECT DISTINCT character FROM records WHERE type IN ('read', 'write')")
-        return {row['character'] for row in cursor.fetchall()}
-    except sqlite3.OperationalError:
-        return set()
+    """Fetches all unique characters with FSRS retrievability > 0.9."""
+    return set(selection.Selection(conn).from_fsrs('read', due_only=False).retrievability(min_val=0.9).get_all())
 
 
 def generate_content(characters: List[str]) -> FindWordsContent:
@@ -35,19 +33,12 @@ def generate_content(characters: List[str]) -> FindWordsContent:
     Returns:
         FindWordsContent object containing words and sentence
     """
-    # Add cli to the path to import words_db
-    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-    model = ai.get_gemini_model()
-
     # Get words from the database
     words_with_scores = []
     with words_db.get_conn() as conn:
         for char in characters:
             words_with_scores.extend(words_db.get_words_for_char(conn, char))
 
-    # Import here to avoid circular dependencies
-    from . import db
     conn = db.get_db_connection()
     learned_chars = get_learned_chars(conn)
     conn.close()
@@ -67,6 +58,8 @@ def generate_content(characters: List[str]) -> FindWordsContent:
     random.shuffle(two_char_words_filtered)
     selected_words = two_char_words_filtered[:8]
 
+    print(f"汉字: {characters} 词语: {selected_words}")
+
     if not selected_words:
         print("Error: Could not find enough words to generate the puzzle.", file=sys.stderr)
         # Fallback values
@@ -75,56 +68,68 @@ def generate_content(characters: List[str]) -> FindWordsContent:
             sentence="无法生成句子"
         )
 
-    allowed_chars = set(characters).union(learned_chars).union(set("，。"))
-    characters_str = "".join(characters)
-    learned_chars_str = "".join(learned_chars)
+    allowed_chars_set = set(characters).union(learned_chars).union(set("，。"))
+    characters_set = set(characters)
+    
     words_str = ", ".join(selected_words)
 
-    prompt = f"""
-你是一个小学语文老师。请根据以下汉字和词语：
-- 学习汉字: '{characters_str}'
-- 已学汉字: '{learned_chars_str}'
+    client = genai.Client()
+    best_sentence = "无法生成句子"
+    best_score = -float('inf')
+
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=f"""
+你是一个小学语文老师。请根据以下词语：
 - 词语列表: '{words_str}'
 
-生成一个包含部分词语的简单句子。这个句子必须满足以下条件：
-   - 长度不能超过18个汉字。
-   - 只能包含学习汉字和已学汉字列表中的汉字。
+请生成5个包含部分词语的句子。
+每个句子必须满足以下条件：
+   - 长度在10到18个汉字。
+""",
+            config={
+                "response_mime_type": "application/json",
+                "response_schema": SentencesResponse,
+            },
+        )
+        
+        response_data: SentencesResponse = response.parsed
+        candidate_sentences = response_data.sentences
 
-请以JSON格式返回，不要包含任何其他说明文字或代码块标记。结构如下：
-{{
-  "sentence": "一个句子。"
-}}
-"""
-
-    MAX_RETRIES = 5
-    for attempt in range(MAX_RETRIES):
-        response = ai.generate_content(model, prompt)
-        try:
-            if response is not None:
-                cleaned_text = response.text.strip()
-                if cleaned_text.startswith("```json"):
-                    cleaned_text = cleaned_text[7:]
-                if cleaned_text.endswith("```"):
-                    cleaned_text = cleaned_text[:-3]
-                data = json.loads(cleaned_text)
-                sentence = data["sentence"]
-
-                if len(sentence) <= 18 and all(c in allowed_chars for c in sentence):
-                    return FindWordsContent(
-                        words=selected_words,
-                        sentence=sentence
-                    )
-
-            else:
-                print(f"Failed to generate content for puzzle, attempt {attempt + 1}")
+        for sentence in candidate_sentences:
+            if len(sentence) > 18:
                 continue
 
-        except (json.JSONDecodeError, KeyError) as e:
-            print(f"无法生成句子: {e}")
-            continue
+            score = 0
+            # Rule 1: +1 for each character in `characters`
+            for char in sentence:
+                if char in characters_set:
+                    score += 1
+            
+            # Rule 2: +4 for each word in `selected_words`
+            for word in selected_words:
+                if word in sentence:
+                    score += 4
+            
+            # Rule 3: -4 for each character not in `allowed_chars`
+            for char in sentence:
+                if char not in allowed_chars_set:
+                    score -= 4
+            
+            print(f"{score} points: {sentence}")
+            if score > best_score:
+                best_score = score
+                best_sentence = sentence
 
-    # Fallback values
+    except Exception as e:
+        print(f"Could not generate or parse sentences: {e}", file=sys.stderr)
+        # Fallback is handled after this block
+
+    if best_score < 6:
+        raise Exception("No great sentence generated")
+
     return FindWordsContent(
-        words=["错误"] * 8,
-        sentence="无法生成句子"
+        words=selected_words,
+        sentence=best_sentence
     )
