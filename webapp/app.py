@@ -245,7 +245,7 @@ def mark_study_done(study_id):
             for char in chars:
                 conn.execute(
                     "INSERT INTO records (character, type, score, date) VALUES (?, ?, ?, ?)",
-                    (char, 'readstudy', 10, today_str)
+                    (char, 'writestudy', 10, today_str)
                 )
         
         elif study['type'] == 'cloze':
