@@ -66,29 +66,12 @@ def create_tables():
     c.execute(
         "INSERT OR IGNORE INTO settings (key, value) VALUES ('lesson_range', '1-10')"
     )
-
-    # Migration for num_chars to read_exam_chars and write_exam_chars
-    c.execute("SELECT value FROM settings WHERE key = 'num_chars'")
-    row = c.fetchone()
-    if row:
-        num_chars_val = row["value"]
-        c.execute(
-            "INSERT OR IGNORE INTO settings (key, value) VALUES ('read_exam_chars', ?)",
-            (num_chars_val,),
-        )
-        c.execute(
-            "INSERT OR IGNORE INTO settings (key, value) VALUES ('write_exam_chars', ?)",
-            (num_chars_val,),
-        )
-        c.execute("DELETE FROM settings WHERE key = 'num_chars'")
-    else:
-        c.execute(
-            "INSERT OR IGNORE INTO settings (key, value) VALUES ('read_exam_chars', '100')"
-        )
-        c.execute(
-            "INSERT OR IGNORE INTO settings (key, value) VALUES ('write_exam_chars', '50')"
-        )
-
+    c.execute(
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('read_exam_chars', '100')"
+    )
+    c.execute(
+        "INSERT OR IGNORE INTO settings (key, value) VALUES ('write_exam_chars', '50')"
+    )
     c.execute(
         "INSERT OR IGNORE INTO settings (key, value) VALUES ('study_chars', '20')"
     )
