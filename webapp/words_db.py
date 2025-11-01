@@ -1,7 +1,7 @@
 """
 ## Words database
 
-Maintain a chinese words table in the database. 
+Maintain a chinese words table in the database.
 
 Schema
 - word: string. This is a word with 2 or more characters.
@@ -13,7 +13,7 @@ Process 1: seeding new words for a given character
 - Use Gemini to generate a batch of 3-character words (e.g. 5) containing that character
 - Use Gemini to generate a batch of 4-character words (e.g. 5) containing that character
 - Post process all the generated words, unique them, filter out words that's already in the database
-- For the remaining words, use Gemini to generate the word scoring. 
+- For the remaining words, use Gemini to generate the word scoring.
 - Insert those words into the database
 - Output a logging message after this process is done, with some simple statistics
 
@@ -54,12 +54,18 @@ def init_db():
 
 def get_words_for_char(conn, char, desired_words=10):
     words_with_scores = [
-        (row["word"], row["score"]) for row in conn.execute("SELECT word, score FROM words WHERE word LIKE ?", (f"%{char}%",))
+        (row["word"], row["score"])
+        for row in conn.execute(
+            "SELECT word, score FROM words WHERE word LIKE ?", (f"%{char}%",)
+        )
     ]
     if len(words_with_scores) < desired_words:
         seed_words_for_char(char, desired_words)
         words_with_scores = [
-            (row["word"], row["score"]) for row in conn.execute("SELECT word, score FROM words WHERE word LIKE ?", (f"%{char}%",))
+            (row["word"], row["score"])
+            for row in conn.execute(
+                "SELECT word, score FROM words WHERE word LIKE ?", (f"%{char}%",)
+            )
         ]
     return words_with_scores
 
@@ -67,7 +73,10 @@ def get_words_for_char(conn, char, desired_words=10):
 def seed_words_for_char(char, desired_words=10):
     with get_conn() as conn:
         existing_words = [
-            row["word"] for row in conn.execute("SELECT word FROM words WHERE word LIKE ?", (f"%{char}%",))
+            row["word"]
+            for row in conn.execute(
+                "SELECT word FROM words WHERE word LIKE ?", (f"%{char}%",)
+            )
         ]
 
     log.info(f"Generating words for {char}")
@@ -103,7 +112,7 @@ def seed_words_for_char(char, desired_words=10):
         - 0分：日星
 
         待评分的词语:
-        {', '.join(words_to_score)}
+        {", ".join(words_to_score)}
 
         请严格按照“词语:分数”的格式返回，并用英文逗号分隔，不要包含任何其他说明。
         """
@@ -115,18 +124,21 @@ def seed_words_for_char(char, desired_words=10):
     for item in scores_text:
         try:
             word, score_str = item.split(":")
-            word = word.replace('\'','')
+            word = word.replace("'", "")
             scored_words.append((word.strip(), float(score_str.strip())))
         except ValueError:
             log.warning(f"Could not parse score for '{item}'")
 
     with get_conn() as conn:
         for word, score in scored_words:
-            conn.execute("INSERT OR IGNORE INTO words (word, score) VALUES (?, ?)", (word, score))
+            conn.execute(
+                "INSERT OR IGNORE INTO words (word, score) VALUES (?, ?)", (word, score)
+            )
         conn.commit()
 
-    log.debug(' '.join(s[0] + ':' + str(s[1]) for s in scored_words))
+    log.debug(" ".join(s[0] + ":" + str(s[1]) for s in scored_words))
     log.info(f"Added {len(scored_words)} new words for character '{char}'.")
+
 
 def seed_words_for_lesson(lesson_number):
     lesson_chars = words.get_lesson(lesson_number)
@@ -135,10 +147,14 @@ def seed_words_for_lesson(lesson_number):
         return
 
     with ThreadPoolExecutor() as executor:
-        futures = {executor.submit(seed_words_for_char, char): char for char in lesson_chars}
+        futures = {
+            executor.submit(seed_words_for_char, char): char for char in lesson_chars
+        }
         for future in as_completed(futures):
             char = futures[future]
             try:
                 future.result()
             except Exception as e:
-                log.exception(f"An error occurred while processing character '{char}': {e}")
+                log.exception(
+                    f"An error occurred while processing character '{char}': {e}"
+                )

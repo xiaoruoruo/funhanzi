@@ -9,9 +9,11 @@ from . import words_gen, fsrs_logic
 from google import genai
 from pydantic import BaseModel
 
+
 class SentencePair(BaseModel):
     word: str
     sentence: str
+
 
 @dataclass
 class ClozeEntry:
@@ -28,29 +30,31 @@ def calculate_sentence_score(sentence: str) -> float:
     """
     total_score = 0
     sentence_chars = set(sentence)
-    
+
     for char in sentence_chars:
         retrievability = None
-        if (char, 'read') in fsrs_logic.cards:
-            card = fsrs_logic.cards[(char, 'read')]
+        if (char, "read") in fsrs_logic.cards:
+            card = fsrs_logic.cards[(char, "read")]
             today = datetime.now(timezone.utc)
-            retrievability = fsrs_logic.read_scheduler.get_card_retrievability(card, today)
-        
+            retrievability = fsrs_logic.read_scheduler.get_card_retrievability(
+                card, today
+            )
+
         char_score = retrievability if retrievability is not None else 0
         if char_score > 0.9:
             total_score += 1
-    
+
     return total_score
 
 
 def generate_content(conn, characters: List[str]) -> List[ClozeEntry]:
     """
     Generate cloze test entries with words and sentences containing blanks.
-    
+
     Args:
         conn: Database connection.
         characters: List of Chinese characters to generate content for.
-        
+
     Returns:
         List of ClozeEntry objects containing word and cloze sentence
     """
@@ -72,7 +76,7 @@ def generate_content(conn, characters: List[str]) -> List[ClozeEntry]:
                 "response_schema": list[SentencePair],
             },
         )
-            
+
         print(response.text)
         pairs_data: list[SentencePair] = response.parsed
 
@@ -92,24 +96,20 @@ def generate_content(conn, characters: List[str]) -> List[ClozeEntry]:
                 # Calculate score for each sentence and select the one with the highest score
                 best_sentence = sentences[0]
                 best_score = calculate_sentence_score(sentences[0])
-                
+
                 for sentence in sentences[1:]:
                     score = calculate_sentence_score(sentence)
                     if score > best_score:
                         best_score = score
                         best_sentence = sentence
-                
-                cloze_sentence = best_sentence.replace(word, '（ ）', 1)
-                pairs.append(ClozeEntry(
-                    word=word,
-                    cloze_sentence=cloze_sentence
-                ))
+
+                cloze_sentence = best_sentence.replace(word, "（ ）", 1)
+                pairs.append(ClozeEntry(word=word, cloze_sentence=cloze_sentence))
             else:
                 # If no sentences were generated for this word, create a fallback entry
-                pairs.append(ClozeEntry(
-                    word=word,
-                    cloze_sentence=f"无法为 {word} 生成句子"
-                ))
+                pairs.append(
+                    ClozeEntry(word=word, cloze_sentence=f"无法为 {word} 生成句子")
+                )
     except Exception as e:
         print(f"无法生成句子: {e}")
         pairs = [ClozeEntry(word="错误", cloze_sentence="无法生成句子")] * 5

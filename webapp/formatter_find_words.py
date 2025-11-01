@@ -9,15 +9,17 @@ class FindWordsContent:
     sentence: str
 
 
-def generate_grid(sentence: str, words: List[str], filler_chars: List[str]) -> Tuple[List[List[str]], int]:
+def generate_grid(
+    sentence: str, words: List[str], filler_chars: List[str]
+) -> Tuple[List[List[str]], int]:
     """
     Generate a character grid with the sentence laid out and words placed in it.
-    
+
     Args:
         sentence: The sentence to be laid out in the grid
         words: The words to be placed in the grid
         filler_chars: Characters to fill empty spaces
-    
+
     Returns:
         Tuple of (grid, start_row) where grid is the 8x8 character grid and start_row is the row where the sentence starts
     """
@@ -25,7 +27,7 @@ def generate_grid(sentence: str, words: List[str], filler_chars: List[str]) -> T
     grid = [[None for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]
     start_row = random.randint(0, GRID_SIZE - 1)
     r, c = start_row, 0
-    
+
     # Lay out the sentence in the grid
     for char in sentence:
         if r < GRID_SIZE and c < GRID_SIZE:
@@ -44,53 +46,62 @@ def generate_grid(sentence: str, words: List[str], filler_chars: List[str]) -> T
             r, c = random.choice(possible_moves)
         else:
             break
-    
+
     # Collect empty cells
     empty_cells = []
     for r_ in range(GRID_SIZE):
         for c_ in range(GRID_SIZE):
             if grid[r_][c_] is None:
                 empty_cells.append((r_, c_))
-    
+
     # Randomly shuffle empty cells
     random.shuffle(empty_cells)
-    
+
     # Place words in the grid
     for word in words:
         is_filled = False
         while empty_cells and not is_filled:
             r_, c_ = empty_cells.pop()
-            if grid[r_][c_] is None and c_ + 1 < GRID_SIZE and grid[r_][c_+1] is None:
+            if grid[r_][c_] is None and c_ + 1 < GRID_SIZE and grid[r_][c_ + 1] is None:
                 grid[r_][c_] = word[0]
-                grid[r_][c_+1] = word[1]
+                grid[r_][c_ + 1] = word[1]
                 is_filled = True
                 break
-    
+
     # Collect remaining empty cells
-    empty_cells = [(r_, c_) for r_ in range(GRID_SIZE) for c_ in range(GRID_SIZE) if grid[r_][c_] is None]
-    
+    empty_cells = [
+        (r_, c_)
+        for r_ in range(GRID_SIZE)
+        for c_ in range(GRID_SIZE)
+        if grid[r_][c_] is None
+    ]
+
     # Fill remaining empty cells with random filler characters
     for r_, c_ in empty_cells:
         if filler_chars:
             grid[r_][c_] = random.choice(filler_chars)
-    
+
     return grid, start_row
 
 
-def format_html(content: FindWordsContent, output_filename: str, header_text: str = None):
+def format_html(
+    content: FindWordsContent, output_filename: str, header_text: str = None
+):
     """
     Format find words puzzle as HTML.
-    
+
     Args:
         content: FindWordsContent object containing words and sentence
         output_filename: Path to output HTML file
         header_text: Optional header text to display
     """
-    grid, start_row = generate_grid(content.sentence, content.words, list(set(''.join(content.words))))
-    
+    grid, start_row = generate_grid(
+        content.sentence, content.words, list(set("".join(content.words)))
+    )
+
     start_marker_top = f"calc((100% / 16) + (100% / 8) * {start_row})"
-    
-    html_content = f'''<!DOCTYPE html>
+
+    html_content = f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -113,21 +124,21 @@ def format_html(content: FindWordsContent, output_filename: str, header_text: st
 </head>
 <body>
     <h1>找朋友</h1>
-    <div class="container">'''
-    
+    <div class="container">"""
+
     if header_text:
         html_content += f'        <div class="header"><p>{header_text}</p></div>\n'
-    
-    html_content += f'''        <ul class="word-list">{''.join(f'<li class="word-item">{word}</li>' for word in content.words)}</ul>
+
+    html_content += f"""        <ul class="word-list">{"".join(f'<li class="word-item">{word}</li>' for word in content.words)}</ul>
         <p class="instructions">逐一读出词组，并将词组在下方方格中圈出。将下方的句子连起来。</p>
         <div class="sentence-box">{content.sentence}</div>
         <div class="grid-container">
-            <div class="char-grid">{''.join(f'<div class="grid-cell">{char if char is not None else ""}</div>' for row in grid for char in row)}</div>
+            <div class="char-grid">{"".join(f'<div class="grid-cell">{char if char is not None else ""}</div>' for row in grid for char in row)}</div>
             <div class="start-marker">▶</div>
         </div>
     </div>
 </body>
-</html>'''
-    
+</html>"""
+
     with open(output_filename, "w", encoding="utf-8") as f:
         f.write(html_content)

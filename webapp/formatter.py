@@ -1,19 +1,34 @@
 import random
 
-def generate_exam_html(items, output_filename, title, header_text, items_per_row, font_size):
+
+def generate_exam_html(
+    items, output_filename, title, header_text, items_per_row, font_size
+):
     html_content = [
-        "<!DOCTYPE html>", "<html>", "<head>", "<meta charset='UTF-8'>",
-        f"<title>{title}</title>", "<style>",
+        "<!DOCTYPE html>",
+        "<html>",
+        "<head>",
+        "<meta charset='UTF-8'>",
+        f"<title>{title}</title>",
+        "<style>",
         "  @page { size: letter; margin: 1in; }",
         "  body { font-family: 'Songti SC', 'STSong', serif; }",
         "  h1 { text-align: center; }",
         "  .items-grid { display: grid;",
         f"   grid-template-columns: repeat({items_per_row}, 1fr);",
-        "    gap: 1em 0;", "  }",
-        "  .item {", f"   font-size: {font_size}pt;",
-        "    display: flex;", "    align-items: center;", "    justify-content: center;", "  }",
+        "    gap: 1em 0;",
+        "  }",
+        "  .item {",
+        f"   font-size: {font_size}pt;",
+        "    display: flex;",
+        "    align-items: center;",
+        "    justify-content: center;",
+        "  }",
         "  .header { font-size: 10pt; text-align: right; padding-bottom: 20px; page-break-inside: avoid; }",
-        "</style>", "</head>", "<body>", f"<h1>{title}</h1>"
+        "</style>",
+        "</head>",
+        "<body>",
+        f"<h1>{title}</h1>",
     ]
     html_content.append("<div class='header'>")
     html_content.append(f"<p>{header_text}</p>")
@@ -27,21 +42,36 @@ def generate_exam_html(items, output_filename, title, header_text, items_per_row
     with open(output_filename, "w", encoding="utf-8") as f:
         f.write("\n".join(html_content))
 
-def generate_failed_study_sheet(failed_read_chars, failed_write_chars, output_filename, header_text):
+
+def generate_failed_study_sheet(
+    failed_read_chars, failed_write_chars, output_filename, header_text
+):
     html_content = [
-        "<!DOCTYPE html>", "<html>", "<head>", "<meta charset='UTF-8'>",
-        f"<title>Character Review</title>", "<style>",
+        "<!DOCTYPE html>",
+        "<html>",
+        "<head>",
+        "<meta charset='UTF-8'>",
+        "<title>Character Review</title>",
+        "<style>",
         "  @page { size: letter; margin: 1in; }",
         "  body { font-family: 'Songti SC', 'STSong', serif; }",
         "  h1, h2 { text-align: center; }",
         "  .items-grid { display: grid;",
-        f"   grid-template-columns: repeat(6, 1fr);",
-        "    gap: 1em 0;", "  }",
-        "  .item {", f"   font-size: 36pt;",
-        "    display: flex;", "    align-items: center;", "    justify-content: center;", "  }",
+        "   grid-template-columns: repeat(6, 1fr);",
+        "    gap: 1em 0;",
+        "  }",
+        "  .item {",
+        "   font-size: 36pt;",
+        "    display: flex;",
+        "    align-items: center;",
+        "    justify-content: center;",
+        "  }",
         "  .header { font-size: 10pt; text-align: right; padding-bottom: 20px; page-break-inside: avoid; }",
         "  .section { margin-bottom: 40px; }",
-        "</style>", "</head>", "<body>", f"<h1>Character Review</h1>"
+        "</style>",
+        "</head>",
+        "<body>",
+        "<h1>Character Review</h1>",
     ]
     html_content.append("<div class='header'>")
     html_content.append(f"<p>{header_text}</p>")
@@ -67,8 +97,9 @@ def generate_failed_study_sheet(failed_read_chars, failed_write_chars, output_fi
     with open(output_filename, "w", encoding="utf-8") as f:
         f.write("\n".join(html_content))
 
+
 def format_study_sheet_html(characters_data, output_filename):
-    html = '''
+    html = """
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -100,7 +131,7 @@ def format_study_sheet_html(characters_data, output_filename):
             </tr>
         </thead>
         <tbody>
-'''
+"""
     for char, pinyin, word in characters_data:
         html += f"""
             <tr>
@@ -112,9 +143,12 @@ def format_study_sheet_html(characters_data, output_filename):
     with open(output_filename, "w", encoding="utf-8") as f:
         f.write(html)
 
-def format_find_words_html(words, sentence, grid, start_row, output_filename, title="找朋友"):
+
+def format_find_words_html(
+    words, sentence, grid, start_row, output_filename, title="找朋友"
+):
     start_marker_top = f"calc((100% / 16) + (100% / 8) * {start_row})"
-    html_content = f'''
+    html_content = f"""
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -138,19 +172,20 @@ def format_find_words_html(words, sentence, grid, start_row, output_filename, ti
 <body>
     <h1>{title}</h1>
     <div class="container">
-        <ul class="word-list">{''.join(f'<li class="word-item">{word}</li>' for word in words)}</ul>
+        <ul class="word-list">{"".join(f'<li class="word-item">{word}</li>' for word in words)}</ul>
         <p class="instructions">逐一读出词组，并将词组在下方方格中圈出。将下方的句子连起来。</p>
         <div class="sentence-box">{sentence}</div>
         <div class="grid-container">
-            <div class="char-grid">{''.join(f'<div class="grid-cell">{char if char is not None else ""}</div>' for row in grid for char in row)}</div>
+            <div class="char-grid">{"".join(f'<div class="grid-cell">{char if char is not None else ""}</div>' for row in grid for char in row)}</div>
             <div class="start-marker">▶</div>
         </div>
     </div>
 </body>
 </html>
-'''
+"""
     with open(output_filename, "w", encoding="utf-8") as f:
         f.write(html_content)
+
 
 def format_cloze_test_html(pairs, output_filename, title="句子填空"):
     words = [p[0] for p in pairs]
@@ -158,7 +193,7 @@ def format_cloze_test_html(pairs, output_filename, title="句子填空"):
     random.shuffle(words)
     random.shuffle(sentences)
 
-    html_content = f'''
+    html_content = f"""
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -183,7 +218,7 @@ def format_cloze_test_html(pairs, output_filename, title="句子填空"):
         <h1>{title}</h1>
         <p class="instructions">找出句子中正确的词组，将它们连起来。</p>
         <table class="cloze-table">
-'''
+"""
     for i in range(len(words)):
         html_content += f"""
             <tr>

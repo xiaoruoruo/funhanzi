@@ -1,8 +1,8 @@
-
 import os
 import sys
 import google.generativeai as genai
 from dotenv import load_dotenv
+
 
 def get_gemini_model(model_name="gemini-2.5-flash"):
     """

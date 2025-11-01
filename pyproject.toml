@@ -12,3 +12,11 @@ dependencies = [
     "beautifulsoup4>=4.12.3",
     "google-genai>=1.46.0",
 ]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.3",
+]
+
+[tool.ruff.lint]
+extend-select = ["B"]

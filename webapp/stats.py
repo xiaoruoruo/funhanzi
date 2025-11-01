@@ -13,46 +13,46 @@
 
 import datetime
 from collections import defaultdict
-from fsrs import Scheduler, Card, Rating
-import json
+from fsrs import Scheduler
 
 from . import db
 from . import fsrs_logic
-from . import words
+
 
 def calculate_monthly_stats():
     conn = db.get_db_connection()
-    
+
     # 1. Fetch All Records
-    all_records = conn.execute('SELECT * FROM records ORDER BY date').fetchall()
+    all_records = conn.execute("SELECT * FROM records ORDER BY date").fetchall()
     if not all_records:
         return []
 
     # Get all unique characters from the records
-    all_chars_in_records = sorted(list(set(r['character'] for r in all_records)))
+    all_chars_in_records = sorted(list(set(r["character"] for r in all_records)))
 
     # 2. Group Records by Month
     records_by_month = defaultdict(list)
     for record in all_records:
-        month_str = record['date'][:7] # YYYY-MM
+        month_str = record["date"][:7]  # YYYY-MM
         records_by_month[month_str].append(record)
 
     # 3. Iterate Chronologically
-    start_date = datetime.datetime.strptime(all_records[0]['date'], '%Y-%m-%d')
-    end_date = datetime.datetime.strptime(all_records[-1]['date'], '%Y-%m-%d')
-    
+    start_date = datetime.datetime.strptime(all_records[0]["date"], "%Y-%m-%d")
+    end_date = datetime.datetime.strptime(all_records[-1]["date"], "%Y-%m-%d")
+
     current_date = start_date
     months_to_process = []
     while current_date <= end_date:
-        months_to_process.append(current_date.strftime('%Y-%m'))
+        months_to_process.append(current_date.strftime("%Y-%m"))
         # Move to the first day of the next month
         if current_date.month == 12:
-            current_date = current_date.replace(year=current_date.year + 1, month=1, day=1)
+            current_date = current_date.replace(
+                year=current_date.year + 1, month=1, day=1
+            )
         else:
             current_date = current_date.replace(month=current_date.month + 1, day=1)
-    
+
     monthly_stats = []
-    cumulative_records = []
     cumulative_chars = set()
 
     for month in sorted(months_to_process):
@@ -63,31 +63,33 @@ def calculate_monthly_stats():
         else:
             next_month_first_day = datetime.date(year, month_num + 1, 1)
         last_day_of_month = next_month_first_day - datetime.timedelta(days=1)
-        month_end_date_str = last_day_of_month.strftime('%Y-%m-%d')
-        
+        month_end_date_str = last_day_of_month.strftime("%Y-%m-%d")
+
         # Filter records up to the end of the current month
-        historical_records = [r for r in all_records if r['date'] <= month_end_date_str]
-        
+        historical_records = [r for r in all_records if r["date"] <= month_end_date_str]
+
         # 4a. Initialize fresh FSRS schedulers
         read_scheduler = Scheduler(desired_retention=0.9)
         write_scheduler = Scheduler(desired_retention=0.6)
 
         # 4b. Process historical records
         cards = fsrs_logic.build_cards(all_chars_in_records, historical_records)
-        
+
         # Update cumulative unique characters
         for record in historical_records:
-            cumulative_chars.add(record['character'])
+            cumulative_chars.add(record["character"])
 
         # Calculate retrievability and categorize
         read_mastered, read_learning, read_lapsing = 0, 0, 0
         write_mastered, write_learning, write_lapsing = 0, 0, 0
 
-        calculation_time = datetime.datetime.combine(last_day_of_month, datetime.datetime.max.time()).replace(tzinfo=datetime.timezone.utc)
+        calculation_time = datetime.datetime.combine(
+            last_day_of_month, datetime.datetime.max.time()
+        ).replace(tzinfo=datetime.timezone.utc)
 
         for char in cumulative_chars:
             # Read card
-            read_card = cards.get((char, 'read'))
+            read_card = cards.get((char, "read"))
             if read_card:
                 r = read_scheduler.get_card_retrievability(read_card, calculation_time)
                 if r is not None:
@@ -98,11 +100,13 @@ def calculate_monthly_stats():
                         read_learning += 1
                     else:
                         read_lapsing += 1
-            
+
             # Write card
-            write_card = cards.get((char, 'write'))
+            write_card = cards.get((char, "write"))
             if write_card:
-                r = write_scheduler.get_card_retrievability(write_card, calculation_time)
+                r = write_scheduler.get_card_retrievability(
+                    write_card, calculation_time
+                )
                 if r is not None:
                     r = float(r)
                     if r > 0.9:
@@ -117,24 +121,24 @@ def calculate_monthly_stats():
         studies_this_month = 0
         month_records = records_by_month.get(month, [])
         for record in month_records:
-            if record['type'] in ['read', 'write']:
+            if record["type"] in ["read", "write"]:
                 reviews_this_month += 1
-            elif record['type'] in ['readstudy', 'writestudy']:
+            elif record["type"] in ["readstudy", "writestudy"]:
                 studies_this_month += 1
 
         stats = {
-            'month': month,
-            'total_reviews': reviews_this_month,
-            'total_studies': studies_this_month,
-            'cumulative_unique_chars': len(cumulative_chars),
-            'read_mastered': read_mastered,
-            'read_learning': read_learning,
-            'read_lapsing': read_lapsing,
-            'write_mastered': write_mastered,
-            'write_learning': write_learning,
-            'write_lapsing': write_lapsing,
+            "month": month,
+            "total_reviews": reviews_this_month,
+            "total_studies": studies_this_month,
+            "cumulative_unique_chars": len(cumulative_chars),
+            "read_mastered": read_mastered,
+            "read_learning": read_learning,
+            "read_lapsing": read_lapsing,
+            "write_mastered": write_mastered,
+            "write_learning": write_learning,
+            "write_lapsing": write_lapsing,
         }
         monthly_stats.append(stats)
 
     conn.close()
-    return sorted(monthly_stats, key=lambda x: x['month'], reverse=True)
+    return sorted(monthly_stats, key=lambda x: x["month"], reverse=True)

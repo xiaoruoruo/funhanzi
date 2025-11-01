@@ -9,8 +9,10 @@ from . import words_db
 from . import db
 from . import selection
 
+
 class SentencesResponse(BaseModel):
     sentences: List[str]
+
 
 @dataclass
 class FindWordsContent:
@@ -20,16 +22,21 @@ class FindWordsContent:
 
 def get_learned_chars(conn):
     """Fetches all unique characters with FSRS retrievability > 0.9."""
-    return set(selection.Selection(conn).from_fsrs('read', due_only=False).retrievability(min_val=0.9).get_all())
+    return set(
+        selection.Selection(conn)
+        .from_fsrs("read", due_only=False)
+        .retrievability(min_val=0.9)
+        .get_all()
+    )
 
 
 def generate_content(characters: List[str]) -> FindWordsContent:
     """
     Generate find-words puzzle content with words and a sentence containing those words.
-    
+
     Args:
         characters: List of Chinese characters to generate content for
-        
+
     Returns:
         FindWordsContent object containing words and sentence
     """
@@ -61,21 +68,21 @@ def generate_content(characters: List[str]) -> FindWordsContent:
     print(f"汉字: {characters} 词语: {selected_words}")
 
     if not selected_words:
-        print("Error: Could not find enough words to generate the puzzle.", file=sys.stderr)
-        # Fallback values
-        return FindWordsContent(
-            words=["错误"] * 8,
-            sentence="无法生成句子"
+        print(
+            "Error: Could not find enough words to generate the puzzle.",
+            file=sys.stderr,
         )
+        # Fallback values
+        return FindWordsContent(words=["错误"] * 8, sentence="无法生成句子")
 
     allowed_chars_set = set(characters).union(learned_chars).union(set("，。"))
     characters_set = set(characters)
-    
+
     words_str = ", ".join(selected_words)
 
     client = genai.Client()
     best_sentence = "无法生成句子"
-    best_score = -float('inf')
+    best_score = -float("inf")
 
     try:
         response = client.models.generate_content(
@@ -93,7 +100,7 @@ def generate_content(characters: List[str]) -> FindWordsContent:
                 "response_schema": SentencesResponse,
             },
         )
-        
+
         response_data: SentencesResponse = response.parsed
         candidate_sentences = response_data.sentences
 
@@ -106,17 +113,17 @@ def generate_content(characters: List[str]) -> FindWordsContent:
             for char in sentence:
                 if char in characters_set:
                     score += 1
-            
+
             # Rule 2: +4 for each word in `selected_words`
             for word in selected_words:
                 if word in sentence:
                     score += 4
-            
+
             # Rule 3: -4 for each character not in `allowed_chars`
             for char in sentence:
                 if char not in allowed_chars_set:
                     score -= 4
-            
+
             print(f"{score} points: {sentence}")
             if score > best_score:
                 best_score = score
@@ -129,7 +136,4 @@ def generate_content(characters: List[str]) -> FindWordsContent:
     if best_score < 6:
         raise Exception("No great sentence generated")
 
-    return FindWordsContent(
-        words=selected_words,
-        sentence=best_sentence
-    )
+    return FindWordsContent(words=selected_words, sentence=best_sentence)
