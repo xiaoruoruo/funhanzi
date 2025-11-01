@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for
 from . import db
 from . import logic
 from . import fsrs_logic
+from . import stats
 import datetime
 import logging
 from bs4 import BeautifulSoup
@@ -15,6 +16,11 @@ app = Flask(__name__)
 @app.route('/')
 def index():
     return redirect(url_for('exam'))
+
+@app.route('/stats')
+def show_stats():
+    stats_data = stats.calculate_monthly_stats()
+    return render_template('stats.html', stats=stats_data)
 
 @app.route('/exam')
 def exam():

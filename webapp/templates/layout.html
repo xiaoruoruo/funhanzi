@@ -18,6 +18,7 @@
           <li class="nav-item"><a href="{{ url_for('exam') }}" class="nav-link {% if request.endpoint == 'exam' %}active{% endif %}">Exam</a></li>
           <li class="nav-item"><a href="{{ url_for('study') }}" class="nav-link {% if request.endpoint == 'study' %}active{% endif %}">Study</a></li>
           <li class="nav-item"><a href="{{ url_for('progress') }}" class="nav-link {% if request.endpoint == 'progress' %}active{% endif %}">Progress</a></li>
+          <li class="nav-item"><a href="{{ url_for('show_stats') }}" class="nav-link {% if request.endpoint == 'show_stats' %}active{% endif %}">Stats</a></li>
           <li class="nav-item"><a href="{{ url_for('admin') }}" class="nav-link {% if request.endpoint == 'admin' %}active{% endif %}">Admin</a></li>
         </ul>
       </header>

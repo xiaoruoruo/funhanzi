@@ -50,6 +50,17 @@ def create_tables():
         )
     ''')
 
+    # records table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            character TEXT NOT NULL,
+            type TEXT NOT NULL,
+            score INTEGER NOT NULL,
+            date TEXT NOT NULL
+        )
+    ''')
+
     # Set default settings
     c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('lesson_range', '1-10')")
     
