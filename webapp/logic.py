@@ -13,7 +13,7 @@ from . import formatter_exam
 from . import formatter_char_word
 from . import formatter_cloze
 from . import formatter_find_words
-from . import words_db
+from . import words_gen
 
 
 def create_study_chars_sheet(
@@ -312,7 +312,7 @@ def create_write_exam(
         selected_chars = s.from_lesson_range(lessons).random(num_chars)
 
     # Generate
-    word_list = words_db.generate_exam_words(conn, selected_chars)
+    word_list = words_gen.generate_exam_words(conn, selected_chars)
     random.shuffle(word_list)
 
     # Format
