@@ -62,7 +62,7 @@ def generate_words_max_score(conn, characters: List[str]) -> List[str]:
 
     For each character, use words_db to get a list of candidate words that contain that character.
     For each character in all the candidate words, obtain the fsrs retrievability score (type "read").
-    Compute the score of the candidate as: SUM(character_score - 80 for each character's score). Here 80 is a threshold where a character is considered good enough.
+    Compute the score of the candidate as: COUNT(character_score > 80%) - COUNT(character_score < 80%). Here 80 is a threshold where a character is considered good enough.
     Select the candidate word with the max score.
     Continue with the next character to generate. It's not necessary to prevent having overlap characters in words.
 
@@ -104,8 +104,11 @@ def generate_words_max_score(conn, characters: List[str]) -> List[str]:
 
                 # Use 0 as default if no retrievability score exists
                 char_score = retrievability if retrievability is not None else 0
-                # Add (character_score - 80) to the total score
-                total_score += char_score - 80
+
+                if char_score > 0.8:
+                    total_score += 1
+                else:
+                    total_score -= 1
 
             # Update best word if this one has higher score
             if total_score > best_score:
