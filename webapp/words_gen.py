@@ -63,26 +63,22 @@ def generate_words_max_score(conn, characters: List[str]) -> List[str]:
     For each character, use words_db to get a list of candidate words that contain that character.
     For each character in all the candidate words, obtain the fsrs retrievability score (type "read").
     Compute the score of the candidate as: COUNT(character_score > 80%) - COUNT(character_score < 80%). Here 80 is a threshold where a character is considered good enough.
-    Select the candidate word with the max score.
+    Select the candidate words that is good enough.
     Continue with the next character to generate. It's not necessary to prevent having overlap characters in words.
 
     Args:
         conn: Database connection.
         characters: List of Chinese characters to generate words for.
     Returns:
-        List of words with the highest calculated scores.
+        List of words.
     """
     from datetime import datetime, timezone
 
-    # Don't use remaining_chars since overlapping characters in words is allowed
     final_word_list = []
 
     for char in characters:
         # Get candidate words for this character
         candidate_words = get_words_for_char(conn, char)
-
-        best_word = char
-        best_score = -float("inf")  # Initialize to negative infinity
 
         for word, word_db_score in candidate_words:
             if word_db_score < 0.8:
@@ -108,13 +104,9 @@ def generate_words_max_score(conn, characters: List[str]) -> List[str]:
                 if char_score > 0.8:
                     total_score += 1
                 else:
-                    total_score -= 1
+                    total_score -= 4
 
-            # Update best word if this one has higher score
-            if total_score > best_score:
-                best_score = total_score
-                best_word = word
-
-        final_word_list.append(best_word)
+            if total_score >= 2:
+                final_word_list.append(word)
 
     return final_word_list

@@ -32,6 +32,8 @@ def calculate_sentence_score(sentence: str) -> float:
     sentence_chars = set(sentence)
 
     for char in sentence_chars:
+        if char in ['，','。']:
+            continue
         retrievability = None
         if (char, "read") in fsrs_logic.cards:
             card = fsrs_logic.cards[(char, "read")]
@@ -43,6 +45,8 @@ def calculate_sentence_score(sentence: str) -> float:
         char_score = retrievability if retrievability is not None else 0
         if char_score > 0.9:
             total_score += 1
+        else:
+            total_score -= 4
 
     return total_score
 
@@ -61,7 +65,7 @@ def generate_content(conn, characters: List[str]) -> List[ClozeEntry]:
     logging.info(f"Generating cloze using: {characters}")
     words = words_gen.generate_words_max_score(conn, characters)
     random.shuffle(words)
-    words = words[:5]
+    words = words[:8]
     logging.info(f"Selected words for cloze: {words}")
 
     words_str = ", ".join(words)
@@ -70,7 +74,7 @@ def generate_content(conn, characters: List[str]) -> List[ClozeEntry]:
     try:
         response = client.models.generate_content(
             model="gemini-2.5-flash",
-            contents=f"""我在给2年级的孩子准备中文生字复习，请根据以下词语：'{words_str}'，为每个词语各生成至少5个包含该词语的简单句子。""",
+            contents=f"""我在给2年级的孩子准备中文生字复习，请根据以下词语：'{words_str}'，为每个词语各生成至少8个包含该词语的简单句子。""",
             config={
                 "response_mime_type": "application/json",
                 "response_schema": list[SentencePair],
@@ -104,7 +108,9 @@ def generate_content(conn, characters: List[str]) -> List[ClozeEntry]:
                         best_sentence = sentence
 
                 cloze_sentence = best_sentence.replace(word, "（ ）", 1)
-                pairs.append(ClozeEntry(word=word, cloze_sentence=cloze_sentence))
+                # Only accept the sentence is the sentence is good enough.
+                if best_score >= 4:
+                    pairs.append(ClozeEntry(word=word, cloze_sentence=cloze_sentence))
             else:
                 # If no sentences were generated for this word, create a fallback entry
                 pairs.append(
