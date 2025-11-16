@@ -1,0 +1,41 @@
+{% extends "studies/base.html" %}
+
+{% block title %}Study History{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Study History</h1>
+    <div>
+      <a href="{% url 'generate_study_chars' %}" class="btn btn-primary">Generate Study Sheet</a>
+      <a href="{% url 'generate_failed_study' %}" class="btn btn-secondary">Failed Study</a>
+      <a href="{% url 'generate_find_words_puzzle' %}" class="btn btn-primary">Find Words Puzzle</a>
+      <a href="{% url 'generate_cloze_test' %}" class="btn btn-secondary">Cloze Test</a>
+    </div>
+  </div>
+  
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Created At</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for study in studies %}
+        <tr>
+          <td>{{ study.type }}</td>
+          <td>{{ study.created_at }}</td>
+          <td>{% if study.done %}Done{% else %}Pending{% endif %}</td>
+          <td>
+            {% if not study.done %}
+              <a href="{% url 'view_study' study_id=study.id %}" class="btn btn-sm btn-primary">View</a>
+              <a href="{% url 'mark_study_done' study_id=study.id %}" class="btn btn-sm btn-success">Mark as Done</a>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

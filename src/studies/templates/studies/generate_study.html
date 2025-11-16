@@ -1,0 +1,62 @@
+{% extends "studies/base.html" %}
+
+{% block title %}Generate Study Session{% endblock %}
+
+{% block content %}
+<div>
+    <h1>Generate {{ study_type }} Study Session</h1>
+    
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="mb-3">
+            <label for="num_chars" class="form-label">Number of characters:</label>
+            <input type="number" class="form-control" id="num_chars" name="num_chars" value="10" min="1" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="lessons" class="form-label">Lessons (e.g., 1-10):</label>
+            <input type="text" class="form-control" id="lessons" name="lessons" value="1-10" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="score_filter" class="form-label">Score filter (optional):</label>
+            <input type="number" class="form-control" id="score_filter" name="score_filter">
+        </div>
+        
+        <div class="mb-3">
+            <label for="days_filter" class="form-label">Days filter (optional):</label>
+            <input type="number" class="form-control" id="days_filter" name="days_filter">
+        </div>
+        
+        <div class="mb-3">
+            <label for="header_text" class="form-label">Header text:</label>
+            <input type="text" class="form-control" id="header_text" name="header_text" value="{{ study_type|title }} Study Session">
+        </div>
+        
+        {% if study_type == 'failed' %}
+        <div class="mb-3">
+            <label for="threshold" class="form-label">Threshold (for failed study):</label>
+            <input type="number" class="form-control" id="threshold" name="threshold" value="5">
+        </div>
+        
+        <div class="mb-3">
+            <label for="recency_days" class="form-label">Recency days (for failed study):</label>
+            <input type="number" class="form-control" id="recency_days" name="recency_days" value="8">
+        </div>
+        {% endif %}
+        
+        {% if study_type in 'cloze,words' %}
+        <div class="mb-3">
+            <label for="study_source" class="form-label">Study source (optional):</label>
+            <select class="form-select" id="study_source" name="study_source">
+                <option value="">Default</option>
+                <option value="review">Review</option>
+            </select>
+        </div>
+        {% endif %}
+        
+        <button type="submit" class="btn btn-primary">Generate Study</button>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "studies/base.html" %}
+
+{% block title %}Unauthorized Access{% endblock %}
+
+{% block content %}
+<div class="text-center">
+    <h1>Unauthorized Access</h1>
+    <p class="lead">You don't have permission to view this content.</p>
+    <a href="{% url 'progress' %}" class="btn btn-primary">Go to Progress Page</a>
+</div>
+{% endblock %}

@@ -1,16 +1,19 @@
 [project]
-name = "siwu"
+name = "funhanzi"
 version = "0.1.0"
-description = "Add your description here"
+description = "Next-generation Hanzi learning platform"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "flask>=3.1.2",
     "google-generativeai>=0.8.5",
     "python-dotenv>=1.1.1",
     "fsrs>=4.2.0",
     "beautifulsoup4>=4.12.3",
     "google-genai>=1.46.0",
+    "django>=5.1.0",
+    "psycopg2-binary>=2.9.9",
+    "pytz>=2025.2",
+    "gunicorn>=23.0.0",
 ]
 
 [dependency-groups]

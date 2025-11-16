@@ -1,0 +1,46 @@
+{% extends "studies/base.html" %}
+
+{% block title %}Progress{% endblock %}
+
+{% block content %}
+<div>
+    <h1>Progress</h1>
+    
+    <div class="mt-5">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Character</th>
+                    <th>Read (Days Ago)</th>
+                    <th>Write (Days Ago)</th>
+                    <th>Read Retrievability</th>
+                    <th>Write Retrievability</th>
+                    <th>Read Due In (Days)</th>
+                    <th>Write Due In (Days)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for char, data in progress_data.items %}
+                    <tr>
+                        <td>{{ char }}</td>
+                        <td>
+                            {% for record in data.read.records %}
+                                <span class="{{ record.color }}">{{ record.days_ago }}</span>&nbsp;
+                            {% endfor %}
+                        </td>
+                        <td>
+                            {% for record in data.write.records %}
+                                <span class="{{ record.color }}">{{ record.days_ago }}</span>&nbsp;
+                            {% endfor %}
+                        </td>
+                        <td>{{ data.read.retrievability }}</td>
+                        <td>{{ data.write.retrievability }}</td>
+                        <td>{{ data.read.due_in_days }}</td>
+                        <td>{{ data.write.due_in_days }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

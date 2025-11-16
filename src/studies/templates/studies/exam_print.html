@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <title>{{ content.title }}</title>
+    <style>
+        @page { size: letter; margin: 1in; }
+        body { font-family: 'Songti SC', 'STSong', serif; }
+        h1 { text-align: center; }
+        .items-grid { 
+            display: grid;
+            grid-template-columns: repeat({{ content.items_per_row|default:4 }}, 1fr);
+            gap: 1em 0;
+        }
+        .item {
+            font-size: {{ content.font_size|default:30 }}pt;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .header { 
+            font-size: 10pt; 
+            text-align: right; 
+            padding-bottom: 20px; 
+            page-break-inside: avoid; 
+        }
+    </style>
+</head>
+<body>
+    <h1>{{ content.title }}</h1>
+    <div class='header'>
+        <p>{{ content.header_text }}</p>
+    </div>
+    <div class='items-grid'>
+        {% for item in content.items %}
+            <div class='item'>{{ item.hanzi|default:item }}</div>
+        {% endfor %}
+    </div>
+</body>
+</html>

@@ -1,0 +1,36 @@
+{% extends "studies/base.html" %}
+
+{% block title %}Record Exam{% endblock %}
+
+{% block content %}
+  <h1>Record Exam</h1>
+  <p>For each character, select the score (0 = forgot, 10 = perfect).</p>
+  
+  <form method="post">
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="width: 10%;">Character</th>
+          <th style="width: 90%;">Score</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for char in characters %}
+          <tr>
+            <td style="font-size: 24pt;">{{ char }}</td>
+            <td>
+              <div class="btn-group" role="group" aria-label="Score for {{ char }}">
+                {% for score_value in score_range %}
+                  <input type="radio" class="btn-check" name="score_{{ char }}" id="score_{{ char }}_{{ score_value }}" value="{{ score_value }}" autocomplete="off" {% if score_value == 10 %}checked{% endif %}>
+                  <label class="btn btn-outline-primary" for="score_{{ char }}_{{ score_value }}">{{ score_value }}</label>
+                {% endfor %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% csrf_token %}
+    <button type="submit" class="btn btn-success">Save Scores</button>
+  </form>
+{% endblock %}

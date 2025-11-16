@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>找朋友</title>
+    <style>
+        @page { size: letter; margin: 1in; }
+        body { font-family: 'Songti SC', 'STSong', serif; font-size: 16pt; display: flex; flex-direction: column; align-items: center; }
+        .container { width: 80%; }
+        h1 { text-align: center; margin-bottom: 20px; }
+        .header { font-size: 10pt; text-align: right; padding-bottom: 20px; page-break-inside: avoid; }
+        .word-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 20px; padding: 0; list-style: none; }
+        .word-item { border: 2px solid #ccc; border-radius: 25px; padding: 5px 15px; }
+        .instructions { text-align: center; margin-bottom: 20px; }
+        .sentence-box { border: 2px dotted #999; padding: 15px; margin-bottom: 20px; text-align: center; font-size: 18pt; }
+        .grid-container { position: relative; width: 100%; margin: 0 auto; }
+        .char-grid { display: grid; grid-template-columns: repeat(8, 1fr); border-top: 2px solid black; border-left: 2px solid black; }
+        .grid-cell { border-right: 2px solid black; border-bottom: 2px solid black; aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center; font-size: 24pt; }
+        .start-marker { position: absolute; left: -30px; top: {{ start_marker_top }}; transform: translateY(-50%); color: orange; font-size: 20pt; }
+    </style>
+</head>
+<body>
+    <h1>找朋友</h1>
+    <div class="container">
+        {% if study.content.header_text %}
+            <div class="header"><p>{{ study.content.header_text }}</p></div>
+        {% endif %}
+
+        <ul class="word-list">
+            {% for word in study.content.content.words %}
+                <li class="word-item">{{ word }}</li>
+            {% endfor %}
+        </ul>
+        <p class="instructions">逐一读出词组，并将词组在下方方格中圈出。将下方的句子连起来。</p>
+        <div class="sentence-box">{{ study.content.content.sentence }}</div>
+        <div class="grid-container">
+            <div class="char-grid">
+                {% for row in grid %}
+                    {% for char in row %}
+                        <div class="grid-cell">{{ char|default:"" }}</div>
+                    {% endfor %}
+                {% endfor %}
+            </div>
+            <div class="start-marker">▶</div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{% extends "studies/base.html" %}
+
+{% block title %}Study Session{% endblock %}
+
+{% block content %}
+<div>
+    <h1>Study Session</h1>
+    
+    {% if content.header_text %}
+        <h2 class="mb-4">{{ content.header_text }}</h2>
+    {% endif %}
+    
+    <div id="study-content">
+        <!-- Content will be rendered based on study type -->
+        {{ content.content|safe }}
+    </div>
+    
+    <div class="mt-4">
+        <a href="{% url 'progress' %}" class="btn btn-secondary">Back to Progress</a>
+    </div>
+</div>
+{% endblock %}

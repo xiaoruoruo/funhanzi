@@ -1,0 +1,41 @@
+{% extends "studies/base.html" %}
+
+{% block title %}Exam History{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Exam History</h1>
+    <div class="btn-group" role="group">
+        <a href="{% url 'generate_read_exam' %}" class="btn btn-primary">Generate Read Exam</a>
+        <a href="{% url 'generate_write_exam' %}" class="btn btn-secondary">Generate Write Exam</a>
+        <a href="{% url 'generate_review_exam_read' %}" class="btn btn-info">Generate Read Review</a>
+        <a href="{% url 'generate_review_exam_write' %}" class="btn btn-warning">Generate Write Review</a>
+    </div>
+  </div>
+  
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Created At</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for exam in exams %}
+        <tr>
+          <td>{{ exam.type }}</td>
+          <td>{{ exam.created_at }}</td>
+          <td>{% if exam.recorded %}Recorded{% else %}Pending{% endif %}</td>
+          <td>
+            <a href="{% url 'view_exam' exam_id=exam.id %}" class="btn btn-sm btn-primary">View</a>
+            {% if not exam.recorded %}
+              <a href="{% url 'record_exam' exam_id=exam.id %}" class="btn btn-sm btn-success">Record</a>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

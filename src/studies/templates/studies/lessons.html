@@ -1,0 +1,49 @@
+{% extends 'studies/base.html' %}
+
+{% block title %}Lesson Management{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Lesson Management</h1>
+
+    <table class="table table-striped table-hover mt-3">
+        <thead>
+            <tr>
+                <th>Lesson Number</th>
+                <th>Characters</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for lesson in lessons %}
+            <tr>
+                <td>{{ lesson.lesson_num }}</td>
+                <td>{{ lesson.characters }}</td>
+                <td>
+                    {% if lesson.is_learned %}
+                        <span class="badge bg-success">Learned</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Not Learned</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <form action="{% url 'toggle_lesson_learned' lesson.lesson_num %}" method="post" class="d-inline">
+                        {% csrf_token %}
+                        {% if lesson.is_learned %}
+                            <button type="submit" class="btn btn-sm btn-warning">Mark as Unlearned</button>
+                        {% else %}
+                            <button type="submit" class="btn btn-sm btn-primary">Mark as Learned</button>
+                        {% endif %}
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4">No lessons found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

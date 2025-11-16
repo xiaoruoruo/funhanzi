@@ -70,7 +70,7 @@ The application's learning schedule is managed by the `py-fsrs` library.
 *   **Implied Reading Records:** To better model the learning process, the system assumes that writing proficiency implies reading proficiency. When a "write" score is recorded, an implied "read" record is also generated for the same character with a score bonus (+3, capped at 10).
 *   **Card Rebuilding:** On application startup and after new exam scores are recorded, the entire history of review records is replayed to build the current state of all FSRS cards. This ensures the learning schedule is always accurate and up-to-date.
 
-## Getting Started
+## Getting Started (TO BE UPDATED TO DJANGO)
 
 Ensure a python environment is installed. [uv](https://docs.astral.sh/uv/getting-started/installation/) is recommended.
 
@@ -85,15 +85,3 @@ uv run run.py
 ```
 
 Navigate to http://127.0.0.1:5000/.
-
-## Technical Stack
-
-*   **Backend Framework:** Flask
-*   **Frontend Styling:** Bootstrap CSS
-*   **Database:** SQLite
-*   **Spaced Repetition:** `py-fsrs`
-*   **AI Integration:** Gemini for study material generation.
-
-## Future Enhancements
-
-*   **More Fun Studies:** Create different kinds of fun study sheets.
