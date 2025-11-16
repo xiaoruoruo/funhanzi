@@ -43,5 +43,7 @@ USER nonroot
 # Use `/app` as the working directory
 WORKDIR /app/src
 
+EXPOSE 8000
+
 # Run the FastAPI application by default
 CMD ["gunicorn", "-c", "../gunicorn.conf.py", "funhanzi.wsgi"]

@@ -5,5 +5,4 @@ __pycache__
 .ruff_cache
 *.zip
 *.log
-uv.lock
 .env

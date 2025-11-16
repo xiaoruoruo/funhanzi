@@ -12,5 +12,4 @@ docker-compose.yml
 __pycache__
 *.zip
 *.log
-uv.lock
 .env
