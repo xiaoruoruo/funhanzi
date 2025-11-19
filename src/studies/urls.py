@@ -19,6 +19,7 @@ urlpatterns = [
     path('study/review/', views.generate_review_study, name='generate_review_study'),
     path('study/cloze/', views.generate_cloze_test, name='generate_cloze_test'),
     path('study/words/', views.generate_find_words_puzzle, name='generate_find_words_puzzle'),
+    path('study/ch_en_matching/', views.generate_ch_en_matching_study, name='generate_ch_en_matching_study'),
     
     # Exam generation URLs
     path('exam/read/', views.generate_read_exam, name='generate_read_exam'),

@@ -190,6 +190,29 @@ def generate_find_words_puzzle(request):
     return render(request, 'studies/generate_study.html', {'study_type': 'words'})
 
 
+def generate_ch_en_matching_study(request):
+    if request.method == 'POST':
+        num_chars = int(request.POST.get('num_chars', 10))
+        score_filter = request.POST.get('score_filter')
+        score_filter = int(score_filter) if score_filter else None
+        days_filter = request.POST.get('days_filter')
+        days_filter = int(days_filter) if days_filter else None
+        study_source = request.POST.get('study_source')
+        header_text = request.POST.get('header_text', 'Chinese-English Matching')
+
+        content_data = study_logic.create_ch_en_matching_study(
+            num_chars=num_chars,
+            score_filter=score_filter,
+            days_filter=days_filter,
+            study_source=study_source,
+            header_text=header_text,
+        )
+        study = Study.objects.create(type='ch_en_matching', content=content_data)
+        return redirect('view_study', study_id=study.id)
+
+    return render(request, 'studies/generate_study.html', {'study_type': 'ch_en_matching'})
+
+
 # Exam Generation Views
 def generate_read_exam(request):
     # Get last used parameters from database
@@ -399,7 +422,14 @@ def _generate_review_exam(request, exam_type):
 def view_study(request, study_id):
     study = get_object_or_404(Study, id=study_id)
     content = study.content
-    templates_by_type = {'chars': 'studies/study_chars.html', 'failed': 'studies/study_failed.html', 'review': 'studies/study_review.html', 'cloze': 'studies/study_cloze.html', 'words': 'studies/study_words.html'}
+    templates_by_type = {
+        'chars': 'studies/study_chars.html',
+        'failed': 'studies/study_failed.html',
+        'review': 'studies/study_review.html',
+        'cloze': 'studies/study_cloze.html',
+        'words': 'studies/study_words.html',
+        'ch_en_matching': 'studies/study_ch_en_matching.html'
+    }
     template_name = templates_by_type.get(study.type, 'studies/study_default.html')
     
     context = {'study': study, 'content': content}

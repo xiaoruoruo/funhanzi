@@ -10,6 +10,7 @@ from . import selection
 from . import study_char_word
 from . import study_cloze
 from . import study_find_words
+from . import study_ch_en_matching
 from studies.models import Word, StudyLog
 
 
@@ -44,6 +45,55 @@ def create_study_chars_sheet(
     # Return the content as a JSON-serializable structure
     result = {
         'type': 'chars',
+        'header_text': header_text,
+        'content': content,
+        'selected_chars': selected_chars
+    }
+
+    return result
+
+
+def create_ch_en_matching_study(
+    num_chars,
+    score_filter=None,
+    days_filter=None,
+    study_source=None,
+    header_text=None,
+):
+    """
+    Create a Chinese-English matching study as JSON content.
+    """
+    # Character selection logic (similar to cloze and find_words)
+    if study_source == "review":
+        s = selection.Selection()
+        s.from_fsrs("read", due_only=False).retrievability(
+            min_val=-1, max_val=1
+        ).lowest_retrievability()
+        if days_filter is not None:
+            s.remove_recent_records_by_type(days_filter, ["readstudy"])
+
+        all_sorted_chars = s.get_all()
+        pool_size = min(len(all_sorted_chars), num_chars * 3)
+        character_pool = all_sorted_chars[:pool_size]
+        selected_chars = random.sample(
+            character_pool, min(len(character_pool), num_chars)
+        )
+    else:
+        s = selection.Selection()
+        s = s.from_learned_lessons()
+        if score_filter is not None:
+            s = s.remove_score_greater("read", score_filter)
+        if days_filter is not None:
+            s = s.remove_any_recent_records(days_filter)
+
+        selected_chars = s.random(num_chars)
+
+    # Generate
+    content = study_ch_en_matching.generate_content(selected_chars)
+
+    # Return the content as a JSON-serializable structure
+    result = {
+        'type': 'ch_en_matching',
         'header_text': header_text,
         'content': content,
         'selected_chars': selected_chars

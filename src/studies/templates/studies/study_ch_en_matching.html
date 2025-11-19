@@ -1,0 +1,65 @@
+{% extends "studies/base.html" %}
+
+{% block title %}Chinese-English Matching Study{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="text-center mb-4">{{ header_text }}</h1>
+
+    <div class="row">
+        <!-- Left Column: Chinese Words -->
+        <div class="col-md-6">
+            <ul class="list-group" id="chinese-words">
+                {% for item in content %}
+                    <li class="list-group-item" data-word="{{ item.chinese_word }}">
+                        <strong>{{ item.chinese_word }}</strong>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Right Column: English Options -->
+        <div class="col-md-6">
+            <ul class="list-group" id="english-options">
+                {% for item in content %}
+                    <li class="list-group-item">
+                        <div class="btn-group" role="group">
+                            {% for option in item.options %}
+                                <button type="button" class="btn btn-outline-primary" data-translation="{{ option }}" onclick="checkAnswer('{{ item.chinese_word }}', '{{ option }}', '{{ item.correct_translation }}', this)">
+                                    {{ option }}
+                                </button>
+                            {% endfor %}
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+function checkAnswer(word, selectedOption, correctTranslation, button) {
+    const wordElement = document.querySelector(`#chinese-words li[data-word="${word}"]`);
+    const buttons = button.parentElement.children;
+
+    if (selectedOption === correctTranslation) {
+        wordElement.classList.add('bg-success', 'text-white');
+        button.classList.add('btn-success');
+    } else {
+        wordElement.classList.add('bg-danger', 'text-white');
+        button.classList.add('btn-danger');
+        // Highlight the correct answer
+        for (let btn of buttons) {
+            if (btn.dataset.translation === correctTranslation) {
+                btn.classList.add('btn-success');
+            }
+        }
+    }
+
+    // Disable all buttons in the group after an answer is selected
+    for (let btn of buttons) {
+        btn.disabled = true;
+    }
+}
+</script>
+{% endblock %}
