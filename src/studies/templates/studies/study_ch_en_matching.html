@@ -3,63 +3,79 @@
 {% block title %}Chinese-English Matching Study{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <h1 class="text-center mb-4">{{ header_text }}</h1>
-
-    <div class="row">
-        <!-- Left Column: Chinese Words -->
-        <div class="col-md-6">
-            <ul class="list-group" id="chinese-words">
-                {% for item in content %}
-                    <li class="list-group-item" data-word="{{ item.chinese_word }}">
-                        <strong>{{ item.chinese_word }}</strong>
-                    </li>
-                {% endfor %}
-            </ul>
-        </div>
-
-        <!-- Right Column: English Options -->
-        <div class="col-md-6">
-            <ul class="list-group" id="english-options">
-                {% for item in content %}
-                    <li class="list-group-item">
-                        <div class="btn-group" role="group">
-                            {% for option in item.options %}
-                                <button type="button" class="btn btn-outline-primary" data-translation="{{ option }}" onclick="checkAnswer('{{ item.chinese_word }}', '{{ option }}', '{{ item.correct_translation }}', this)">
-                                    {{ option }}
-                                </button>
-                            {% endfor %}
-                        </div>
-                    </li>
-                {% endfor %}
-            </ul>
-        </div>
-    </div>
-</div>
-
-<script>
-function checkAnswer(word, selectedOption, correctTranslation, button) {
-    const wordElement = document.querySelector(`#chinese-words li[data-word="${word}"]`);
-    const buttons = button.parentElement.children;
-
-    if (selectedOption === correctTranslation) {
-        wordElement.classList.add('bg-success', 'text-white');
-        button.classList.add('btn-success');
-    } else {
-        wordElement.classList.add('bg-danger', 'text-white');
-        button.classList.add('btn-danger');
-        // Highlight the correct answer
-        for (let btn of buttons) {
-            if (btn.dataset.translation === correctTranslation) {
-                btn.classList.add('btn-success');
-            }
+<style>
+    /* Hide the header and any other elements you don't want to print */
+    @media print {
+        header {
+            display: none !important;
         }
     }
 
-    // Disable all buttons in the group after an answer is selected
-    for (let btn of buttons) {
-        btn.disabled = true;
+    /* Unified styles for both screen and print */
+    body {
+        font-family: "Heiti SC", "PingFang SC", "Microsoft YaHei", "SimSun", sans-serif;
+        font-size: 12px; /* Base font size */
     }
-}
-</script>
+
+    .container {
+        max-width: 100% !important;
+        width: 100% !important;
+        padding: 0 !important;
+        margin: 0 auto !important; /* Center the content */
+    }
+
+    h1 {
+        text-align: center;
+        font-size: 20px;
+        margin-bottom: 15px;
+    }
+
+    ol {
+        list-style-type: decimal;
+        padding-left: 20px;
+        margin-left: 10px;
+        column-count: 2;
+        column-gap: 25px;
+    }
+
+    li {
+        margin-bottom: 15px;
+        page-break-inside: avoid;
+        break-inside: avoid-column; /* Prevent items from breaking across columns */
+    }
+
+    .chinese-word {
+        font-weight: bold;
+        font-size: 16px;
+        margin-bottom: 5px;
+    }
+
+    .choices {
+        font-size: 12px;
+    }
+
+    .choices div {
+        padding: 1px 0;
+    }
+</style>
+
+<div class="container">
+    <h1 class="text-center mb-4">{{ header_text }}</h1>
+    <div style="max-width: 600px; margin: 0 auto;">
+        <ol>
+            {% for item in content.content %}
+                <li>
+                    <div class="chinese-word">{{ item.chinese_word }}</div>
+                    <div class="choices" style="display: flex; flex-direction: column; gap: 5px;">
+                        {% for option in item.options %}
+                            <div>
+                                {% if forloop.counter0 == 0 %}(a){% elif forloop.counter0 == 1 %}(b){% elif forloop.counter0 == 2 %}(c){% elif forloop.counter0 == 3 %}(d){% endif %} {{ option }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </li>
+            {% endfor %}
+        </ol>
+    </div>
+</div>
 {% endblock %}

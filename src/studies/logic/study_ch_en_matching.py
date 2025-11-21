@@ -14,6 +14,10 @@ class TranslationPair(BaseModel):
     english_translation: str
 
 
+class TranslationsResponse(BaseModel):
+    translations: List[TranslationPair]
+
+
 @dataclass
 class ChEnMatchingEntry:
     chinese_word: str
@@ -38,11 +42,9 @@ def generate_content(characters: List[str]) -> List[dict]:
     """
     Generate Chinese-English matching entries.
     """
-    logging.info(f"Generating Chinese-English matching using: {characters}")
     words = words_gen.generate_words_max_score(characters)
     random.shuffle(words)
     words = words[:8]
-    logging.info(f"Selected words for matching: {words}")
 
     words_str = ", ".join(words)
 
@@ -53,14 +55,16 @@ def generate_content(characters: List[str]) -> List[dict]:
             contents=f"Translate the following Chinese words to English: '{words_str}'.",
             config={
                 "response_mime_type": "application/json",
-                "response_schema": List[TranslationPair],
+                "response_schema": TranslationsResponse,
             },
         )
+
+        response_data: TranslationsResponse = response.parsed
 
         # Create a dictionary to quickly look up translations
         translations: dict[str, str] = {
             item.chinese_word: item.english_translation
-            for item in response.parsed
+            for item in response_data.translations
         }
 
         all_english_translations = list(translations.values())

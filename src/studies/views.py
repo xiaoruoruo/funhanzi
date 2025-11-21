@@ -433,6 +433,8 @@ def view_study(request, study_id):
     template_name = templates_by_type.get(study.type, 'studies/study_default.html')
     
     context = {'study': study, 'content': content}
+    if study.type == 'ch_en_matching':
+        context['header_text'] = content.get('header_text', 'Chinese-English Matching Study')
     if study.type == 'cloze':
         words = content.get('words', [])
         sentences = content.get('sentences', [])
