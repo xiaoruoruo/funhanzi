@@ -14,7 +14,7 @@
             <input type="number" class="form-control" id="num_chars" name="num_chars" value="10" min="1" required>
         </div>
         
-        <div class="mb-3">
+        <div class="mb-3" id="lessons-group">
             <label for="lessons" class="form-label">Lessons (e.g., 1-10):</label>
             <input type="text" class="form-control" id="lessons" name="lessons" value="1-10" required>
         </div>
@@ -46,7 +46,7 @@
         </div>
         {% endif %}
         
-        {% if study_type in 'cloze,words,ch_en_matching' %}
+        {% if study_type in 'cloze,words,ch_en_matching,chars' %}
         <div class="mb-3">
             <label for="study_source" class="form-label">Study source (optional):</label>
             <select class="form-select" id="study_source" name="study_source">
@@ -59,4 +59,26 @@
         <button type="submit" class="btn btn-primary">Generate Study</button>
     </form>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const studySource = document.getElementById('study_source');
+        const lessonsGroup = document.getElementById('lessons-group');
+
+        if (studySource && lessonsGroup) {
+            studySource.addEventListener('change', function() {
+                if (this.value === 'review') {
+                    lessonsGroup.style.display = 'none';
+                } else {
+                    lessonsGroup.style.display = 'block';
+                }
+            });
+
+            // Initial check
+            if (studySource.value === 'review') {
+                lessonsGroup.style.display = 'none';
+            }
+        }
+    });
+</script>
 {% endblock %}

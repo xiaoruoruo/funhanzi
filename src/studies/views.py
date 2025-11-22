@@ -98,8 +98,19 @@ def generate_study_chars(request):
         else:
             days_filter = None
         header_text = request.POST.get('header_text', 'Character Study Session')
+        study_source = request.POST.get('study_source', None)
+        if study_source == '':
+            study_source = None
+        lessons = request.POST.get('lessons', None)
 
-        content_data = study_logic.create_study_chars_sheet(num_chars=num_chars, score_filter=score_filter, days_filter=days_filter, header_text=header_text)
+        content_data = study_logic.create_study_chars_sheet(
+            num_chars=num_chars,
+            score_filter=score_filter,
+            days_filter=days_filter,
+            header_text=header_text,
+            study_source=study_source,
+            lessons=lessons
+        )
         study = Study.objects.create(type='chars', content=content_data)
         return redirect('view_study', study_id=study.id)
     return render(request, 'studies/generate_study.html', {'study_type': 'chars'})

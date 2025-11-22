@@ -7,3 +7,5 @@ __pycache__
 *.log
 .env
 db.sqlite3
+db.sqlite3-journal
+src/funhanzi.egg-info/
