@@ -26,13 +26,13 @@ def _get_pinyin_for_words(words: List[str]) -> dict:
     if not words:
         return {}
 
-    model = ai.get_gemini_model()
+    client = ai.get_gemini_client()
     
     # Create a single prompt for all words to minimize API calls
     prompt = "请为以下词语提供拼音，每个词语一行，格式为：词语, pīn yīn\n"
     prompt += "\n".join(words)
 
-    response = ai.generate_content(model, prompt)
+    response = ai.generate_content(client, prompt)
     pinyin_map = {}
     if response and response.text:
         try:
