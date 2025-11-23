@@ -747,6 +747,18 @@ def toggle_lesson_learned(request, lesson_num):
     """Toggles the is_learned status for a given lesson."""
     if request.method == 'POST':
         lesson = get_object_or_404(Lesson, lesson_num=lesson_num)
+        
+        # Check if we are marking it as learned (it was False, now becoming True)
+        was_learned = lesson.is_learned
         lesson.is_learned = not lesson.is_learned
         lesson.save()
+        
+        if not was_learned and lesson.is_learned:
+            # Trigger background population
+            import threading
+            from studies.logic import word_population
+            
+            chars = [c.strip() for c in lesson.characters.split(',')]
+            threading.Thread(target=word_population.seed_words_for_lesson, args=(chars,)).start()
+            
     return redirect('lesson_list')
