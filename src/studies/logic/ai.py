@@ -9,11 +9,12 @@ def get_gemini_client():
     Initializes and returns a Gemini client.
     """
     load_dotenv()
-    api_key = os.getenv("GEMINI_API_KEY")
+    api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
-        print("Error: GEMINI_API_KEY not found in .env file.", file=sys.stderr)
-        # In a Django context, raising an exception might be better than sys.exit
-        raise ValueError("GEMINI_API_KEY not found in environment variables.")
+        api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        print("Error: Neither GOOGLE_API_KEY nor GEMINI_API_KEY found in environment variables.", file=sys.stderr)
+        raise ValueError("Neither GOOGLE_API_KEY nor GEMINI_API_KEY found in environment variables.")
     return genai.Client(api_key=api_key)
 
 
