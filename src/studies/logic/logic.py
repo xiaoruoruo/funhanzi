@@ -20,6 +20,7 @@ def create_study_chars_sheet(
     days_filter=None,
     character_list=None,
     header_text=None,
+    study_source=None,
 ):
     """
     Orchestrates the creation of character study sheets as JSON content.
@@ -30,14 +31,25 @@ def create_study_chars_sheet(
     else:
         s = selection.Selection()
 
-        # Corrected and simplified selection logic
-        s = s.from_learned_lessons()
-        if score_filter is not None:
-            s = s.remove_score_greater("read", score_filter)
-        if days_filter is not None:
-            s = s.remove_any_recent_records(days_filter)
+        if study_source == "review":
+            # Review logic: lowest write retrievability
+            s = s.from_fsrs("write") \
+                 .retrievability(min_val=0.000001) \
+                 .lowest_retrievability()
+            
+            if days_filter is not None:
+                s = s.remove_any_recent_records(days_filter)
+            
+            selected_chars = s.take(num_chars)
+        else:
+            # Basic logic (default)
+            s = s.from_learned_lessons()
+            if score_filter is not None:
+                s = s.remove_score_greater("read", score_filter)
+            if days_filter is not None:
+                s = s.remove_any_recent_records(days_filter)
 
-        selected_chars = s.random(num_chars)
+            selected_chars = s.random(num_chars)
 
     # Generate
     content = study_char_word.generate_content(selected_chars)

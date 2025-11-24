@@ -5,48 +5,11 @@
 {% block content %}
 <div>
     <h1>Generate {{ study_type }} Study Session</h1>
-    
+
     <form method="post">
         {% csrf_token %}
-        
-        <div class="mb-3">
-            <label for="num_chars" class="form-label">Number of characters:</label>
-            <input type="number" class="form-control" id="num_chars" name="num_chars" value="10" min="1" required>
-        </div>
-        
-        <div class="mb-3">
-            <label for="lessons" class="form-label">Lessons (e.g., 1-10):</label>
-            <input type="text" class="form-control" id="lessons" name="lessons" value="1-10" required>
-        </div>
-        
-        <div class="mb-3">
-            <label for="score_filter" class="form-label">Score filter (optional):</label>
-            <input type="number" class="form-control" id="score_filter" name="score_filter">
-        </div>
-        
-        <div class="mb-3">
-            <label for="days_filter" class="form-label">Days filter (optional):</label>
-            <input type="number" class="form-control" id="days_filter" name="days_filter">
-        </div>
-        
-        <div class="mb-3">
-            <label for="header_text" class="form-label">Header text:</label>
-            <input type="text" class="form-control" id="header_text" name="header_text" value="{{ study_type|title }} Study Session">
-        </div>
-        
-        {% if study_type == 'failed' %}
-        <div class="mb-3">
-            <label for="threshold" class="form-label">Threshold (for failed study):</label>
-            <input type="number" class="form-control" id="threshold" name="threshold" value="5">
-        </div>
-        
-        <div class="mb-3">
-            <label for="recency_days" class="form-label">Recency days (for failed study):</label>
-            <input type="number" class="form-control" id="recency_days" name="recency_days" value="8">
-        </div>
-        {% endif %}
-        
-        {% if study_type in 'cloze,words,ch_en_matching' %}
+
+        {% if study_type in 'cloze,words,ch_en_matching,chars' %}
         <div class="mb-3">
             <label for="study_source" class="form-label">Study source (optional):</label>
             <select class="form-select" id="study_source" name="study_source">
@@ -55,8 +18,79 @@
             </select>
         </div>
         {% endif %}
-        
+
+        <div class="mb-3">
+            <label for="num_chars" class="form-label">Number of characters:</label>
+            <input type="number" class="form-control" id="num_chars" name="num_chars" value="10" min="1" required>
+        </div>
+
+        <div class="mb-3" id="lessons_container">
+            <label for="lessons" class="form-label">Lessons (e.g., 1-10):</label>
+            <input type="text" class="form-control" id="lessons" name="lessons" value="1-10" required>
+        </div>
+
+        <div class="mb-3" id="score_filter_container">
+            <label for="score_filter" class="form-label">Score filter (optional):</label>
+            <input type="number" class="form-control" id="score_filter" name="score_filter">
+        </div>
+
+        <div class="mb-3">
+            <label for="days_filter" class="form-label">Days filter (optional):</label>
+            <input type="number" class="form-control" id="days_filter" name="days_filter">
+        </div>
+
+        <div class="mb-3">
+            <label for="header_text" class="form-label">Header text:</label>
+            <input type="text" class="form-control" id="header_text" name="header_text"
+                value="{{ study_type|title }} Study Session">
+        </div>
+
+        {% if study_type == 'failed' %}
+        <div class="mb-3">
+            <label for="threshold" class="form-label">Threshold (for failed study):</label>
+            <input type="number" class="form-control" id="threshold" name="threshold" value="5">
+        </div>
+
+        <div class="mb-3">
+            <label for="recency_days" class="form-label">Recency days (for failed study):</label>
+            <input type="number" class="form-control" id="recency_days" name="recency_days" value="8">
+        </div>
+        {% endif %}
+
+
+
         <button type="submit" class="btn btn-primary">Generate Study</button>
     </form>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const studySourceSelect = document.getElementById('study_source');
+        const lessonsContainer = document.getElementById('lessons_container');
+        const scoreFilterContainer = document.getElementById('score_filter_container');
+        const lessonsInput = document.getElementById('lessons');
+
+        function toggleFields() {
+            if (!studySourceSelect) return;
+
+            if (studySourceSelect.value === 'review') {
+                if (lessonsContainer) lessonsContainer.style.display = 'none';
+                if (scoreFilterContainer) scoreFilterContainer.style.display = 'none';
+                // Remove required attribute when hidden to avoid validation errors
+                if (lessonsInput) lessonsInput.removeAttribute('required');
+            } else {
+                if (lessonsContainer) lessonsContainer.style.display = 'block';
+                if (scoreFilterContainer) scoreFilterContainer.style.display = 'block';
+                // Restore required attribute
+                if (lessonsInput) lessonsInput.setAttribute('required', '');
+            }
+        }
+
+        if (studySourceSelect) {
+            studySourceSelect.addEventListener('change', toggleFields);
+            // Initial check
+            toggleFields();
+        }
+    });
+</script>
 {% endblock %}
