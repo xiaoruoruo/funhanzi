@@ -20,6 +20,10 @@ COPY . /app
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev
 
+# Run collectstatic to gather static files
+# We need to set SECRET_KEY for collectstatic to run, even if it's dummy
+RUN SECRET_KEY=dummy uv run src/manage.py collectstatic --noinput
+
 
 # Then, use a final image without uv
 FROM python:3.12-slim-bookworm
