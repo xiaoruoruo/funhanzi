@@ -27,6 +27,13 @@ else
     echo "Test data file not found. Skipping data loading."
 fi
 
+# Create a default superuser
+echo "Creating default superuser (admin/admin)..."
+export DJANGO_SUPERUSER_USERNAME=admin
+export DJANGO_SUPERUSER_PASSWORD=admin
+export DJANGO_SUPERUSER_EMAIL=admin@example.com
+uv run src/manage.py createsuperuser --noinput || echo "Superuser creation failed (maybe already exists?)"
+
 # Start the Django development server using uv
 echo "Starting the Django development server with uv..."
 uv run src/manage.py runserver
