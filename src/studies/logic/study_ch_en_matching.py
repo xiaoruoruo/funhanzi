@@ -6,7 +6,7 @@ import logging
 from google import genai
 from pydantic import BaseModel
 
-from . import words_gen
+from . import words_gen, sentence_gen
 
 
 class TranslationPair(BaseModel):
@@ -16,6 +16,16 @@ class TranslationPair(BaseModel):
 
 class TranslationsResponse(BaseModel):
     translations: List[TranslationPair]
+
+
+class SentenceMatchingItem(BaseModel):
+    original_chinese: str
+    english_translation: str
+    wrong_options: List[str]
+
+
+class SentenceMatchingResponse(BaseModel):
+    items: List[SentenceMatchingItem]
 
 
 @dataclass
@@ -49,6 +59,9 @@ def generate_content(characters: List[str]) -> List[dict]:
     words_str = ", ".join(words)
 
     client = genai.Client()
+    entries = []
+
+    # 1. Generate Word Matching Questions
     try:
         response = client.models.generate_content(
             model="gemini-2.5-flash",
@@ -80,7 +93,6 @@ def generate_content(characters: List[str]) -> List[dict]:
                 ).to_dict()
             ]
 
-        entries = []
         for word in words:
             if word in translations:
                 correct_translation = translations[word]
@@ -97,8 +109,6 @@ def generate_content(characters: List[str]) -> List[dict]:
                 )
                 entries.append(entry.to_dict())
 
-        return entries
-
     except Exception as e:
         logging.error(f"Could not generate translations: {e}")
         return [
@@ -108,3 +118,43 @@ def generate_content(characters: List[str]) -> List[dict]:
                 options=["Could not generate translations."]
             ).to_dict()
         ]
+
+    # 2. Generate Sentence Matching Questions
+    # Select 2 words to generate sentences for
+    sentence_words = words[:2]
+    best_sentences = sentence_gen.generate_best_sentences(sentence_words)
+
+    if best_sentences:
+        sentences_to_process = list(best_sentences.values())
+        sentences_str = "\n".join(sentences_to_process)
+        
+        try:
+            response_sentences = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=f"For each of the following Chinese sentences, provide the English translation and 3 incorrect Chinese sentences created by swapping word order. The incorrect sentences must use the same characters but have different meaning or be grammatically incorrect.\nSentences:\n{sentences_str}",
+                config={
+                    "response_mime_type": "application/json",
+                    "response_schema": SentenceMatchingResponse,
+                },
+            )
+            
+            sentence_data: SentenceMatchingResponse = response_sentences.parsed
+            
+            for item in sentence_data.items:
+                # For sentence matching:
+                # Question (chinese_word field) = English Sentence
+                # Answer (correct_translation field) = Chinese Sentence
+                # Options = [Correct Chinese, Wrong1, Wrong2, Wrong3]
+                
+                entry = ChEnMatchingEntry(
+                    chinese_word=item.english_translation,
+                    correct_translation=item.original_chinese,
+                    options=item.wrong_options
+                )
+                entries.append(entry.to_dict())
+                
+        except Exception as e:
+            logging.error(f"Could not generate sentence matching questions: {e}")
+            # We don't fail the whole study if sentence generation fails, just skip these questions.
+
+    return entries
