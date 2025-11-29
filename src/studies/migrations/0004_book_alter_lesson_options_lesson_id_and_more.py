@@ -28,15 +28,15 @@ class Migration(migrations.Migration):
             name='lesson',
             options={'ordering': ['book__order', 'lesson_num']},
         ),
-        migrations.AddField(
-            model_name='lesson',
-            name='id',
-            field=models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
-        ),
         migrations.AlterField(
             model_name='lesson',
             name='lesson_num',
             field=models.IntegerField(),
+        ),
+        migrations.AddField(
+            model_name='lesson',
+            name='id',
+            field=models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
         ),
         migrations.AddField(
             model_name='lesson',
