@@ -2,21 +2,25 @@ from django.contrib import admin
 from django import forms
 from django.shortcuts import render
 from django.http import HttpResponseRedirect
-from .models import Lesson, Word, Study, Exam, StudyLog, ExamSettings, WordEntry
+from .models import Lesson, Word, Study, Exam, StudyLog, ExamSettings, WordEntry, Book
 
 class UpdateStudyDateForm(forms.Form):
     study_date = forms.DateField()
 
 # Register your models here.
 
+class BookAdmin(admin.ModelAdmin):
+    list_display = ('title', 'order')
+admin.site.register(Book, BookAdmin)
+
 
 class LessonAdmin(admin.ModelAdmin):
-    list_display = ('lesson_num', 'is_learned')
+    list_display = ('book', 'lesson_num', 'is_learned')
 admin.site.register(Lesson, LessonAdmin)
 
 
 class WordAdmin(admin.ModelAdmin):
-    list_display = ('lesson', 'hanzi')
+    list_display = ('hanzi',)
 admin.site.register(Word, WordAdmin)
 
 

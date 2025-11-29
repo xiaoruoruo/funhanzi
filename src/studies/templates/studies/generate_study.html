@@ -24,9 +24,28 @@
             <input type="number" class="form-control" id="num_chars" name="num_chars" value="10" min="1" required>
         </div>
 
-        <div class="mb-3" id="lessons_container">
-            <label for="lessons" class="form-label">Lessons (e.g., 1-10):</label>
-            <input type="text" class="form-control" id="lessons" name="lessons" value="1-10" required>
+        <div class="mb-3" id="book_selection_container">
+            <label for="book_id" class="form-label">Book:</label>
+            <select class="form-select" id="book_id" name="book_id">
+                <option value="">All Books</option>
+                {% for book in books %}
+                <option value="{{ book.id }}">{{ book.title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-3" id="lesson_scope_container">
+            <label for="lesson_scope" class="form-label">Lesson Scope:</label>
+            <select class="form-select" id="lesson_scope" name="lesson_scope">
+                <option value="all">All Learned Lessons</option>
+                <option value="specific">Specific Lesson</option>
+            </select>
+        </div>
+
+        <div class="mb-3" id="specific_lesson_container" style="display: none;">
+            <label for="lesson_range" class="form-label">Specific Lesson(s):</label>
+            <input type="text" class="form-control" id="lesson_range" name="lesson_range" placeholder="e.g. 1-3, 5">
+            <div class="form-text text-muted">Enter lesson numbers separated by commas or ranges (e.g. 1, 3-5). Requires a selected book.</div>
         </div>
 
         <div class="mb-3" id="score_filter_container">
@@ -65,32 +84,54 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const studySourceSelect = document.getElementById('study_source');
-        const lessonsContainer = document.getElementById('lessons_container');
-        const scoreFilterContainer = document.getElementById('score_filter_container');
-        const lessonsInput = document.getElementById('lessons');
+    const studySourceSelect = document.getElementById('study_source');
+    const bookSelect = document.getElementById('book_id');
+    const lessonScopeSelect = document.getElementById('lesson_scope');
+    const specificLessonContainer = document.getElementById('specific_lesson_container');
+    const lessonRangeInput = document.getElementById('lesson_range');
 
-        function toggleFields() {
-            if (!studySourceSelect) return;
+    // Existing elements
+    const scoreFilterContainer = document.getElementById('score_filter_container');
+    const bookSelectionContainer = document.getElementById('book_selection_container');
+    const lessonScopeContainer = document.getElementById('lesson_scope_container');
 
-            if (studySourceSelect.value === 'review') {
-                if (lessonsContainer) lessonsContainer.style.display = 'none';
-                if (scoreFilterContainer) scoreFilterContainer.style.display = 'none';
-                // Remove required attribute when hidden to avoid validation errors
-                if (lessonsInput) lessonsInput.removeAttribute('required');
-            } else {
-                if (lessonsContainer) lessonsContainer.style.display = 'block';
-                if (scoreFilterContainer) scoreFilterContainer.style.display = 'block';
-                // Restore required attribute
-                if (lessonsInput) lessonsInput.setAttribute('required', '');
-            }
+    function toggleFields() {
+        if (!studySourceSelect) return;
+
+        if (studySourceSelect.value === 'review') {
+            if (bookSelectionContainer) bookSelectionContainer.style.display = 'none';
+            if (lessonScopeContainer) lessonScopeContainer.style.display = 'none';
+            if (specificLessonContainer) specificLessonContainer.style.display = 'none';
+            if (scoreFilterContainer) scoreFilterContainer.style.display = 'none';
+        } else {
+            if (bookSelectionContainer) bookSelectionContainer.style.display = 'block';
+            if (lessonScopeContainer) lessonScopeContainer.style.display = 'block';
+            if (scoreFilterContainer) scoreFilterContainer.style.display = 'block';
+
+            // Re-evaluate specific lesson visibility
+            toggleSpecificLesson();
         }
+    }
 
-        if (studySourceSelect) {
-            studySourceSelect.addEventListener('change', toggleFields);
-            // Initial check
-            toggleFields();
+    function toggleSpecificLesson() {
+        if (lessonScopeSelect.value === 'specific') {
+            specificLessonContainer.style.display = 'block';
+        } else {
+            specificLessonContainer.style.display = 'none';
         }
-    });
+    }
+
+    if (studySourceSelect) {
+        studySourceSelect.addEventListener('change', toggleFields);
+    }
+
+    if (lessonScopeSelect) {
+        lessonScopeSelect.addEventListener('change', toggleSpecificLesson);
+    }
+
+    // Initial checks
+    toggleFields();
+    toggleSpecificLesson();
+            });
 </script>
 {% endblock %}

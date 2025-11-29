@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from studies.models import Word
+from studies.models import Word, Book, Lesson
 import os
 
 
@@ -37,21 +37,32 @@ class Command(BaseCommand):
                 if cleaned_line:
                     lessons.append(cleaned_line)
 
+        # Ensure Book 1 exists
+        book, _ = Book.objects.get_or_create(title="Book 1")
+
         # Import each lesson's characters
         total_imported = 0
         for lesson_num, lesson_content in enumerate(lessons, 1):
-            for char in lesson_content:
-                word, created = Word.objects.get_or_create(
-                    hanzi=char,
-                    defaults={
-                        'lesson': lesson_num,
-                    }
-                )
+            # Update Lesson
+            # lesson_content is a string of characters like "你好"
+            # We want to store it as "你, 好"
+            chars_list = list(lesson_content)
+            chars_str = ", ".join(chars_list)
+            
+            Lesson.objects.update_or_create(
+                book=book,
+                lesson_num=lesson_num,
+                defaults={'characters': chars_str}
+            )
+
+            # Ensure Words exist
+            for char in chars_list:
+                word, created = Word.objects.get_or_create(hanzi=char)
                 if created:
                     total_imported += 1
 
         self.stdout.write(
             self.style.SUCCESS(
-                f'Successfully imported {total_imported} new words from {len(lessons)} lessons'
+                f'Successfully processed {len(lessons)} lessons and imported {total_imported} new words.'
             )
         )

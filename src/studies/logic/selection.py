@@ -35,29 +35,60 @@ class Selection:
         self.study_logs: List[StudyLog] = []  # List of StudyLog objects
         self.is_fsrs_mode = False
 
-    def from_learned_lessons(self) -> "Selection":
+    def from_learned_lessons(self, book_id: Optional[int] = None, lesson_id: Optional[int] = None, lesson_ids: Optional[List[int]] = None) -> "Selection":
         """
         Populate the selection with all unique characters from lessons marked as learned.
+        Optionally filter by book_id, lesson_id, or a list of lesson_ids.
+
+        Args:
+            book_id (int, optional): ID of the book to filter by.
+            lesson_id (int, optional): ID of the lesson to filter by.
+            lesson_ids (List[int], optional): List of lesson IDs to filter by.
 
         Returns:
             Selection: Self for method chaining
         """
         self.study_logs = []
-        learned_lesson_numbers = Lesson.objects.filter(is_learned=True).values_list('lesson_num', flat=True)
         
-        # Query all words in the specified lesson ranges
-        self.words = list(Word.objects.filter(lesson__in=list(learned_lesson_numbers)))
+        lessons = Lesson.objects.filter(is_learned=True)
+        
+        if book_id:
+            lessons = lessons.filter(book_id=book_id)
+        if lesson_id:
+            lessons = lessons.filter(id=lesson_id)
+        if lesson_ids:
+            lessons = lessons.filter(id__in=lesson_ids)
+            
+        # Extract characters from all learned lessons
+        # Robustly handle comma-separated or continuous strings
+        all_chars = set()
+        for lesson in lessons:
+            if lesson.characters:
+                # Remove commas and whitespace, treat everything else as potential characters
+                cleaned = lesson.characters.replace(',', '').replace(' ', '').replace('\t', '').replace('\n', '')
+                all_chars.update(list(cleaned))
+        
+        # Query words matching these characters
+        if all_chars:
+            self.words = list(Word.objects.filter(hanzi__in=list(all_chars)))
+        else:
+            self.words = []
+            
         self.is_fsrs_mode = False
         return self
 
-    def from_fsrs(self, card_type: str, due_only: bool = False) -> "Selection":
+    def from_fsrs(self, card_type: str, due_only: bool = False, book_id: Optional[int] = None, lesson_id: Optional[int] = None, lesson_ids: Optional[List[int]] = None) -> "Selection":
         """
         Populate the selection with FSRS cards of a specific type, filtered by learned lessons.
         If due_only=True, only include cards that are currently due for review.
+        Optionally filter by book_id, lesson_id, or a list of lesson_ids.
 
         Args:
             card_type (str): Type of card ('read' or 'write')
             due_only (bool): If True, only include cards due for review
+            book_id (int, optional): ID of the book to filter by.
+            lesson_id (int, optional): ID of the lesson to filter by.
+            lesson_ids (List[int], optional): List of lesson IDs to filter by.
 
         Returns:
             Selection: Self for method chaining
@@ -66,8 +97,24 @@ class Selection:
         study_logs_list = []
 
         # First, get the set of characters from learned lessons
-        learned_lesson_numbers = Lesson.objects.filter(is_learned=True).values_list('lesson_num', flat=True)
-        learned_chars = set(Word.objects.filter(lesson__in=list(learned_lesson_numbers)).values_list('hanzi', flat=True))
+        lessons = Lesson.objects.filter(is_learned=True)
+        
+        if book_id:
+            lessons = lessons.filter(book_id=book_id)
+        if lesson_id:
+            lessons = lessons.filter(id=lesson_id)
+        if lesson_ids:
+            lessons = lessons.filter(id__in=lesson_ids)
+            
+        # Extract characters from all learned lessons
+        all_chars = set()
+        for lesson in lessons:
+            if lesson.characters:
+                # Remove commas and whitespace, treat everything else as potential characters
+                cleaned = lesson.characters.replace(',', '').replace(' ', '').replace('\t', '').replace('\n', '')
+                all_chars.update(list(cleaned))
+
+        learned_chars = all_chars
 
         # Get all study logs for characters in learned lessons
         all_study_logs = StudyLog.objects.filter(word__hanzi__in=learned_chars).select_related('word')

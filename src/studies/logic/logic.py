@@ -21,6 +21,9 @@ def create_study_chars_sheet(
     character_list=None,
     header_text=None,
     study_source=None,
+    book_id=None,
+    lesson_id=None,
+    lesson_ids=None,
 ):
     """
     Orchestrates the creation of character study sheets as JSON content.
@@ -33,7 +36,7 @@ def create_study_chars_sheet(
 
         if study_source == "review":
             # Review logic: lowest write retrievability
-            s = s.from_fsrs("write") \
+            s = s.from_fsrs("write", book_id=book_id, lesson_id=lesson_id, lesson_ids=lesson_ids) \
                  .retrievability(min_val=0.000001) \
                  .lowest_retrievability()
             
@@ -43,7 +46,7 @@ def create_study_chars_sheet(
             selected_chars = s.take(num_chars)
         else:
             # Basic logic (default)
-            s = s.from_learned_lessons()
+            s = s.from_learned_lessons(book_id=book_id, lesson_id=lesson_id, lesson_ids=lesson_ids)
             if score_filter is not None:
                 s = s.remove_score_greater("read", score_filter)
             if days_filter is not None:
@@ -71,6 +74,9 @@ def create_ch_en_matching_study(
     days_filter=None,
     study_source=None,
     header_text=None,
+    book_id=None,
+    lesson_id=None,
+    lesson_ids=None,
 ):
     """
     Create a Chinese-English matching study as JSON content.
@@ -78,7 +84,7 @@ def create_ch_en_matching_study(
     # Character selection logic (similar to cloze and find_words)
     if study_source == "review":
         s = selection.Selection()
-        s.from_fsrs("read", due_only=False).retrievability(
+        s.from_fsrs("read", due_only=False, book_id=book_id, lesson_id=lesson_id, lesson_ids=lesson_ids).retrievability(
             min_val=-1, max_val=1
         ).lowest_retrievability()
         if days_filter is not None:
@@ -92,7 +98,7 @@ def create_ch_en_matching_study(
         )
     else:
         s = selection.Selection()
-        s = s.from_learned_lessons()
+        s = s.from_learned_lessons(book_id=book_id, lesson_id=lesson_id, lesson_ids=lesson_ids)
         if score_filter is not None:
             s = s.remove_score_greater("read", score_filter)
         if days_filter is not None:
@@ -221,13 +227,16 @@ def create_cloze_test(
     days_filter=None,
     study_source=None,
     header_text=None,
+    book_id=None,
+    lesson_id=None,
+    lesson_ids=None,
 ):
     """
     Create a cloze test as JSON content.
     """
     if study_source == "review":
         s = selection.Selection()
-        s.from_fsrs("read", due_only=False).retrievability(
+        s.from_fsrs("read", due_only=False, book_id=book_id, lesson_id=lesson_id, lesson_ids=lesson_ids).retrievability(
             min_val=-1, max_val=1
         ).lowest_retrievability()
         if days_filter is not None:
@@ -242,7 +251,7 @@ def create_cloze_test(
     else:
         s = selection.Selection()
 
-        s = s.from_learned_lessons()
+        s = s.from_learned_lessons(book_id=book_id, lesson_id=lesson_id, lesson_ids=lesson_ids)
         if score_filter is not None:
             s = s.remove_score_greater("read", score_filter)
         if days_filter is not None:
@@ -277,6 +286,9 @@ def create_find_words_puzzle(
     days_filter=None,
     study_source=None,
     header_text=None,
+    book_id=None,
+    lesson_id=None,
+    lesson_ids=None,
 ):
     """
     Orchestrates the creation of find-words puzzles as JSON content.
@@ -284,7 +296,7 @@ def create_find_words_puzzle(
     # Select
     if study_source == "review":
         s = selection.Selection()
-        s.from_fsrs("read", due_only=False).retrievability(
+        s.from_fsrs("read", due_only=False, book_id=book_id, lesson_id=lesson_id, lesson_ids=lesson_ids).retrievability(
             min_val=-1, max_val=1
         ).lowest_retrievability()
         if days_filter is not None:
@@ -299,7 +311,7 @@ def create_find_words_puzzle(
     else:
         s = selection.Selection()
 
-        s = s.from_learned_lessons()
+        s = s.from_learned_lessons(book_id=book_id, lesson_id=lesson_id, lesson_ids=lesson_ids)
         if score_filter is not None:
             s = s.remove_score_greater("read", score_filter)
         if days_filter is not None:
@@ -326,6 +338,8 @@ def create_read_exam(
     character_list=None,
     title=None,
     header_text=None,
+    book_id=None,
+    lesson_id=None,
 ):
     """
     Orchestrates the creation of read exams as JSON content.
@@ -335,7 +349,7 @@ def create_read_exam(
         selected_chars = character_list
     else:
         s = selection.Selection()
-        selected_chars = s.from_learned_lessons().random(num_chars)
+        selected_chars = s.from_learned_lessons(book_id=book_id, lesson_id=lesson_id).random(num_chars)
 
     # Return the content as a JSON-serializable structure
     final_title = title if title is not None else "Reading Test"
@@ -367,6 +381,8 @@ def create_write_exam(
     character_list=None,
     title=None,
     header_text=None,
+    book_id=None,
+    lesson_id=None,
 ):
     """
     Orchestrates the creation of write exams as JSON content.
@@ -378,7 +394,7 @@ def create_write_exam(
         selected_chars = character_list
     else:
         s = selection.Selection()
-        selected_chars = s.from_learned_lessons().random(num_chars)
+        selected_chars = s.from_learned_lessons(book_id=book_id, lesson_id=lesson_id).random(num_chars)
 
     # 2. Generate word list using the greedy coverage algorithm
     remaining_chars = set(selected_chars)

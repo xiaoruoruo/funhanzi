@@ -1,7 +1,7 @@
 from datetime import timedelta
 import logging
 from django.shortcuts import render, redirect, get_object_or_404
-from studies.models import StudyLog, Word, Study, Exam, ExamSettings
+from studies.models import StudyLog, Word, Study, Exam, ExamSettings, Book, Lesson
 from django.db.models import Window
 from django.db.models.functions import RowNumber
 from django.utils import timezone
@@ -83,6 +83,38 @@ def progress_view(request):
     return render(request, 'studies/progress.html', {'progress_data': progress_data})
 
 
+def parse_lesson_range(range_str):
+    """
+    Parses a string of lesson numbers and ranges (e.g., "1-3, 5") into a list of integers.
+    """
+    if not range_str:
+        return []
+    
+    lesson_nums = set()
+    parts = range_str.split(',')
+    
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
+            
+        if '-' in part:
+            try:
+                start, end = map(int, part.split('-'))
+                # Handle range (inclusive)
+                if start <= end:
+                    lesson_nums.update(range(start, end + 1))
+            except ValueError:
+                continue # Ignore malformed ranges
+        else:
+            try:
+                lesson_nums.add(int(part))
+            except ValueError:
+                continue # Ignore malformed numbers
+                
+    return sorted(list(lesson_nums))
+
+
 # Study Generation Views
 def generate_study_chars(request):
     if request.method == 'POST':
@@ -99,11 +131,33 @@ def generate_study_chars(request):
             days_filter = None
         header_text = request.POST.get('header_text', 'Character Study Session')
         study_source = request.POST.get('study_source', None)
+        
+        book_id = request.POST.get('book_id')
+        book_id = int(book_id) if book_id else None
+        
+        lesson_range = request.POST.get('lesson_range')
+        lesson_ids = None
+        
+        if book_id and lesson_range:
+            lesson_nums = parse_lesson_range(lesson_range)
+            if lesson_nums:
+                # Find lesson IDs for these numbers in the selected book
+                lesson_ids = list(Lesson.objects.filter(book_id=book_id, lesson_num__in=lesson_nums).values_list('id', flat=True))
 
-        content_data = study_logic.create_study_chars_sheet(num_chars=num_chars, score_filter=score_filter, days_filter=days_filter, header_text=header_text, study_source=study_source)
+        content_data = study_logic.create_study_chars_sheet(
+            num_chars=num_chars, 
+            score_filter=score_filter, 
+            days_filter=days_filter, 
+            header_text=header_text, 
+            study_source=study_source,
+            book_id=book_id,
+            lesson_ids=lesson_ids
+        )
         study = Study.objects.create(type='chars', content=content_data)
         return redirect('view_study', study_id=study.id)
-    return render(request, 'studies/generate_study.html', {'study_type': 'chars'})
+    
+    books = Book.objects.prefetch_related('lessons').all()
+    return render(request, 'studies/generate_study.html', {'study_type': 'chars', 'books': books})
 
 
 def generate_failed_study(request):
@@ -160,11 +214,32 @@ def generate_cloze_test(request):
         if study_source == '':
             study_source = None
         header_text = request.POST.get('header_text', 'Cloze Test')
+        
+        book_id = request.POST.get('book_id')
+        book_id = int(book_id) if book_id else None
+        
+        lesson_range = request.POST.get('lesson_range')
+        lesson_ids = None
+        
+        if book_id and lesson_range:
+            lesson_nums = parse_lesson_range(lesson_range)
+            if lesson_nums:
+                lesson_ids = list(Lesson.objects.filter(book_id=book_id, lesson_num__in=lesson_nums).values_list('id', flat=True))
 
-        content_data = study_logic.create_cloze_test(num_chars=num_chars, score_filter=score_filter, days_filter=days_filter, study_source=study_source, header_text=header_text)
+        content_data = study_logic.create_cloze_test(
+            num_chars=num_chars, 
+            score_filter=score_filter, 
+            days_filter=days_filter, 
+            study_source=study_source, 
+            header_text=header_text,
+            book_id=book_id,
+            lesson_ids=lesson_ids
+        )
         study = Study.objects.create(type='cloze', content=content_data)
         return redirect('view_study', study_id=study.id)
-    return render(request, 'studies/generate_study.html', {'study_type': 'cloze'})
+    
+    books = Book.objects.prefetch_related('lessons').all()
+    return render(request, 'studies/generate_study.html', {'study_type': 'cloze', 'books': books})
 
 
 def generate_find_words_puzzle(request):
@@ -184,11 +259,32 @@ def generate_find_words_puzzle(request):
         if study_source == '':
             study_source = None
         header_text = request.POST.get('header_text', 'Find Words Puzzle')
+        
+        book_id = request.POST.get('book_id')
+        book_id = int(book_id) if book_id else None
+        
+        lesson_range = request.POST.get('lesson_range')
+        lesson_ids = None
+        
+        if book_id and lesson_range:
+            lesson_nums = parse_lesson_range(lesson_range)
+            if lesson_nums:
+                lesson_ids = list(Lesson.objects.filter(book_id=book_id, lesson_num__in=lesson_nums).values_list('id', flat=True))
 
-        content_data = study_logic.create_find_words_puzzle(num_chars=num_chars, score_filter=score_filter, days_filter=days_filter, study_source=study_source, header_text=header_text)
+        content_data = study_logic.create_find_words_puzzle(
+            num_chars=num_chars, 
+            score_filter=score_filter, 
+            days_filter=days_filter, 
+            study_source=study_source, 
+            header_text=header_text,
+            book_id=book_id,
+            lesson_ids=lesson_ids
+        )
         study = Study.objects.create(type='words', content=content_data)
         return redirect('view_study', study_id=study.id)
-    return render(request, 'studies/generate_study.html', {'study_type': 'words'})
+    
+    books = Book.objects.prefetch_related('lessons').all()
+    return render(request, 'studies/generate_study.html', {'study_type': 'words', 'books': books})
 
 
 def generate_ch_en_matching_study(request):
@@ -200,6 +296,17 @@ def generate_ch_en_matching_study(request):
         days_filter = int(days_filter) if days_filter else None
         study_source = request.POST.get('study_source')
         header_text = request.POST.get('header_text', 'Chinese-English Matching')
+        
+        book_id = request.POST.get('book_id')
+        book_id = int(book_id) if book_id else None
+        
+        lesson_range = request.POST.get('lesson_range')
+        lesson_ids = None
+        
+        if book_id and lesson_range:
+            lesson_nums = parse_lesson_range(lesson_range)
+            if lesson_nums:
+                lesson_ids = list(Lesson.objects.filter(book_id=book_id, lesson_num__in=lesson_nums).values_list('id', flat=True))
 
         content_data = study_logic.create_ch_en_matching_study(
             num_chars=num_chars,
@@ -207,11 +314,14 @@ def generate_ch_en_matching_study(request):
             days_filter=days_filter,
             study_source=study_source,
             header_text=header_text,
+            book_id=book_id,
+            lesson_ids=lesson_ids
         )
         study = Study.objects.create(type='ch_en_matching', content=content_data)
         return redirect('view_study', study_id=study.id)
-
-    return render(request, 'studies/generate_study.html', {'study_type': 'ch_en_matching'})
+    
+    books = Book.objects.prefetch_related('lessons').all()
+    return render(request, 'studies/generate_study.html', {'study_type': 'ch_en_matching', 'books': books})
 
 
 # Exam Generation Views
@@ -739,15 +849,15 @@ def mark_study_done(request, study_id):
 from studies.models import Lesson
 
 def lesson_list(request):
-    """Displays a list of all lessons with their learned status and characters."""
-    lessons = Lesson.objects.all().order_by('lesson_num')
-    return render(request, 'studies/lessons.html', {'lessons': lessons})
+    """Displays a list of all lessons grouped by book."""
+    books = Book.objects.prefetch_related('lessons').all()
+    return render(request, 'studies/lessons.html', {'books': books})
 
 
-def toggle_lesson_learned(request, lesson_num):
+def toggle_lesson_learned(request, lesson_id):
     """Toggles the is_learned status for a given lesson."""
     if request.method == 'POST':
-        lesson = get_object_or_404(Lesson, lesson_num=lesson_num)
+        lesson = get_object_or_404(Lesson, id=lesson_id)
         
         # Check if we are marking it as learned (it was False, now becoming True)
         was_learned = lesson.is_learned

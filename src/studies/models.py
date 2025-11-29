@@ -4,12 +4,11 @@ class Word(models.Model):
     """
     Model to store vocabulary with hanzi only.
     """
-    lesson = models.IntegerField(help_text="The lesson number the character belongs to")
     hanzi = models.CharField(max_length=10, unique=True, help_text="The Chinese character")
     
     class Meta:
         db_table = 'words'
-        ordering = ['lesson', 'hanzi']
+        ordering = ['hanzi']
     
     def __str__(self):
         return self.hanzi
@@ -129,9 +128,24 @@ class WordEntry(models.Model):
     def __str__(self):
         return self.word
 
+class Book(models.Model):
+    """Represents a book containing multiple lessons."""
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True, default='')
+    order = models.IntegerField(default=0, help_text="Order of the book in the curriculum")
+
+    class Meta:
+        ordering = ['order', 'title']
+        db_table = 'books'
+
+    def __str__(self):
+        return self.title
+
+
 class Lesson(models.Model):
     """Represents a single lesson and its learned status."""
-    lesson_num = models.IntegerField(unique=True, primary_key=True)
+    book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='lessons')
+    lesson_num = models.IntegerField()
     is_learned = models.BooleanField(default=False)
     characters = models.TextField() # Store characters as a comma-separated string
 
@@ -139,4 +153,5 @@ class Lesson(models.Model):
         return f"Lesson {self.lesson_num}"
 
     class Meta:
-        ordering = ['lesson_num']
+        ordering = ['book__order', 'lesson_num']
+        unique_together = ['book', 'lesson_num']

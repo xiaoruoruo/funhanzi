@@ -39,5 +39,5 @@ urlpatterns = [
 
     # Lesson management URLs
     path('lessons/', views.lesson_list, name='lesson_list'),
-    path('lessons/toggle/<int:lesson_num>/', views.toggle_lesson_learned, name='toggle_lesson_learned'),
+    path('lessons/toggle/<int:lesson_id>/', views.toggle_lesson_learned, name='toggle_lesson_learned'),
 ]
