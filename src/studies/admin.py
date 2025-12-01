@@ -65,5 +65,6 @@ admin.site.register(ExamSettings, ExamSettingsAdmin)
 
 class WordEntryAdmin(admin.ModelAdmin):
     list_display = ('word', 'score')
+    search_fields = ['word']
 admin.site.register(WordEntry, WordEntryAdmin)
 
