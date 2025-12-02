@@ -49,7 +49,7 @@ def generate_words_max_score(characters: List[str]) -> List[str]:
                     if r_val is not None:
                         retrievability = float(r_val)
 
-                if retrievability > 0.8:
+                if retrievability > 0.8 or word_char in characters:
                     total_score += 1
                 else:
                     total_score -= 4
