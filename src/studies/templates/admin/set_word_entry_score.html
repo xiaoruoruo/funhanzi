@@ -1,0 +1,13 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<form action="" method="post">
+    {% csrf_token %}
+    <p>Set score for the selected {{ queryset.count }} word entry(s):</p>
+    {{ form.as_p }}
+    <input type="hidden" name="action" value="set_score">
+    {% for obj in queryset %}
+    <input type="hidden" name="_selected_action" value="{{ obj.pk }}">
+    {% endfor %}
+    <input type="submit" name="apply" value="Update">
+</form>
+{% endblock %}

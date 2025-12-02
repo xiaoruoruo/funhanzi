@@ -75,8 +75,31 @@ class ExamSettingsAdmin(admin.ModelAdmin):
 admin.site.register(ExamSettings, ExamSettingsAdmin)
 
 
+
+class SetScoreForm(forms.Form):
+    score = forms.FloatField(min_value=0, max_value=1)
+
+def set_score(modeladmin, request, queryset):
+    if 'apply' in request.POST:
+        form = SetScoreForm(request.POST)
+        if form.is_valid():
+            score = form.cleaned_data['score']
+            queryset.update(score=score)
+            modeladmin.message_user(request, f"Changed score to {score} for {queryset.count()} word entries.")
+            return HttpResponseRedirect(request.get_full_path())
+    else:
+        form = SetScoreForm()
+
+    return render(request, 'admin/set_word_entry_score.html', {
+        'title': 'Set Score',
+        'queryset': queryset,
+        'form': form
+    })
+set_score.short_description = "Set score for selected word entries"
+
 class WordEntryAdmin(admin.ModelAdmin):
     list_display = ('word', 'score')
     search_fields = ['word']
+    actions = [set_score]
 admin.site.register(WordEntry, WordEntryAdmin)
 
