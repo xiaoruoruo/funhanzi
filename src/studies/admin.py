@@ -16,6 +16,18 @@ admin.site.register(Book, BookAdmin)
 
 class LessonAdmin(admin.ModelAdmin):
     list_display = ('book', 'lesson_num', 'is_learned')
+    actions = ['populate_word_entries_action']
+
+    @admin.action(description='Populate word entries for selected lessons')
+    def populate_word_entries_action(self, request, queryset):
+        from studies.logic import word_population
+        count = 0
+        for lesson in queryset:
+            chars = [c.strip() for c in lesson.characters.split(',')]
+            word_population.seed_words_for_lesson(chars)
+            count += 1
+        self.message_user(request, f"Started population for {count} lessons.")
+
 admin.site.register(Lesson, LessonAdmin)
 
 
