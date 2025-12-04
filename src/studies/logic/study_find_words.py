@@ -1,12 +1,14 @@
 from dataclasses import dataclass
 from typing import List
+import logging
 import random
-import sys
 from google import genai
 from pydantic import BaseModel
 
 from studies.models import WordEntry
 from . import selection
+
+logger = logging.getLogger(__name__)
 
 
 class SentencesResponse(BaseModel):
@@ -64,12 +66,11 @@ def generate_content(characters: List[str]) -> dict:
     random.shuffle(two_char_words_filtered)
     selected_words = two_char_words_filtered[:8]
 
-    print(f"汉字: {characters} 词语: {selected_words}")
+    logger.info(f"汉字: {characters} 词语: {selected_words}")
 
     if not selected_words:
-        print(
+        logger.error(
             "Error: Could not find enough words to generate the puzzle.",
-            file=sys.stderr,
         )
         fallback_content = FindWordsContent(words=["错误"] * 8, sentence="无法生成句子")
         return fallback_content.to_dict()
@@ -119,20 +120,24 @@ def generate_content(characters: List[str]) -> dict:
                     score += 4
 
             # Rule 3: -4 for each character not in `allowed_chars`
+            unknown_chars = []
             for char in sentence:
                 if char not in allowed_chars_set:
                     score -= 4
+                    unknown_chars.append(char)
 
-            print(f"{score} points: {sentence}")
+            logger.info(f"{score} points: {sentence} (unknown: {unknown_chars})")
             if score > best_score:
                 best_score = score
                 best_sentence = sentence
 
     except Exception as e:
-        print(f"Could not generate or parse sentences: {e}", file=sys.stderr)
+        logger.error(f"Could not generate or parse sentences: {e}")
 
     if best_score < 6:
-        print("No great sentence generated, using fallback.", file=sys.stderr)
+        logger.warning("No great sentence generated, using fallback.")
+        logger.warning(f"Allowed chars count: {len(allowed_chars_set)}")
+        logger.warning(f"Best score: {best_score}")
         best_sentence = "无法为这些词语生成一个好的句子。"
 
 
