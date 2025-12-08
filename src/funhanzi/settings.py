@@ -92,8 +92,13 @@ DATABASES = {
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
 
-# TODO: Internationalization
+# Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
+
+LANGUAGE_CODE = 'en-us'
+TIME_ZONE = 'America/Los_Angeles'
+USE_I18N = True
+USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
