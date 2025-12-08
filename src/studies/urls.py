@@ -4,7 +4,7 @@ from . import views
 
 urlpatterns = [
     path('', RedirectView.as_view(url='exams/', permanent=True), name='home'),
-    path('progress/', views.progress_view, name='progress'),
+
     
     # History URLs
     path('exams/', views.exam_history, name='exam_history'),

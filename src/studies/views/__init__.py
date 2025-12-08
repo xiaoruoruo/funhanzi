@@ -1,4 +1,4 @@
-from .progress import progress_view, stats_view, build_fsrs_cards_from_records
+from .progress import stats_view, build_fsrs_cards_from_records
 from .study_generation import (
     generate_study_chars,
     generate_failed_study,

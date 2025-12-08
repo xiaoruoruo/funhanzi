@@ -1,88 +1,15 @@
 import logging
 from django.shortcuts import render
 from studies.models import StudyLog
-from django.db.models import Window
-from django.db.models.functions import RowNumber
-from django.utils import timezone
+from django.utils import timezone as django_timezone
 from ..logic import fsrs
-import pytz
-from datetime import timedelta, date, datetime
+from datetime import timedelta, date, datetime, timezone
 from collections import defaultdict
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
-def progress_view(request):
-    """
-    View function for the progress page, replicating the logic from the original Flask app.
-    """
-    # Use Django ORM with window functions to get the last 3 records per character-type
-    ranked_study_logs = StudyLog.objects.filter(
-        type__in=['read', 'write']
-    ).select_related('word').annotate(
-        rn=Window(
-            expression=RowNumber(),
-            partition_by=['word__hanzi', 'type'],
-            order_by=['-study_date']
-        )
-    ).filter(rn__lte=3).order_by('word__hanzi', 'type', 'study_date')
 
-    logger.info(f"Found {ranked_study_logs.count()} ranked study logs.")
-    for log in ranked_study_logs[:5]:
-        logger.info(f"  - Char: {log.word.hanzi}, Type: {log.type}, Score: {log.score}, Date: {log.study_date}")
-
-    progress_data = {}
-    
-    # Pre-populate structure for logs
-    for log in ranked_study_logs:
-        char = log.word.hanzi
-        if char not in progress_data:
-            progress_data[char] = {
-                "read": {"records": [], "retrievability": "N/A", "due_in_days": "N/A"},
-                "write": {"records": [], "retrievability": "N/A", "due_in_days": "N/A"},
-            }
-
-        record_type = log.type
-        local_tz = pytz.timezone('America/Los_Angeles')
-        local_now = timezone.now().astimezone(local_tz)
-        days_ago = (local_now.date() - log.study_date).days
-
-        score = log.score
-        rating = fsrs.score_to_rating(score if score is not None else 0)
-        color = fsrs.RATING_TO_COLOR.get(rating, "")
-
-        progress_data[char][record_type]["records"].append(
-            {"days_ago": days_ago, "color": color}
-        )
-
-    try:
-        from ..logic import stats
-        study_logs = StudyLog.objects.filter(
-            type__in=['read', 'write']
-        ).select_related('word')
-        fsrs_cards = fsrs.build_cards_from_logs(list(study_logs))
-        
-        # Calculate stats using shared logic
-        char_stats = stats.calculate_character_stats(fsrs_cards, local_now)
-
-        # Merge stats into progress_data
-        for char, data in char_stats.items():
-            if char in progress_data:
-                if data["read"]["retrievability_str"] != "N/A":
-                    progress_data[char]["read"]["retrievability"] = data["read"]["retrievability_str"]
-                if data["read"]["due_in_days_str"] != "N/A":
-                    progress_data[char]["read"]["due_in_days"] = data["read"]["due_in_days_str"]
-                
-                if data["write"]["retrievability_str"] != "N/A":
-                    progress_data[char]["write"]["retrievability"] = data["write"]["retrievability_str"]
-                if data["write"]["due_in_days_str"] != "N/A":
-                    progress_data[char]["write"]["due_in_days"] = data["write"]["due_in_days_str"]
-
-    except Exception as e:
-        logger.error(f"Error in FSRS processing: {e}")
-        pass
-    
-    return render(request, 'studies/progress.html', {'progress_data': progress_data})
 
 
 def stats_view(request):
@@ -167,7 +94,7 @@ def stats_view(request):
         # Calculate FSRS retrievability as of the end of the month
         calculation_time = datetime.combine(
             last_day_of_month, datetime.max.time()
-        ).replace(tzinfo=pytz.UTC)
+        ).replace(tzinfo=timezone.utc)
 
         for char in cumulative_chars:
             # Read card
@@ -278,7 +205,7 @@ def build_fsrs_cards_from_records(historical_records, all_chars_in_records):
                     review_time = datetime.combine(
                         review_date.date(), 
                         datetime.min.time()
-                    ).replace(tzinfo=datetime.timezone.utc)
+                    ).replace(tzinfo=timezone.utc)
                     card, _ = scheduler.review_card(card, rating, review_time)
 
             built_cards[card_key] = card

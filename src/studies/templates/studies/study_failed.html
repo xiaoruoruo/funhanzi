@@ -5,41 +5,41 @@
 {% block content %}
 <div>
     <h1>Failed Characters Review</h1>
-    
+
     {% if content.header_text %}
-        <h2 class="mb-4">{{ content.header_text }}</h2>
+    <h2 class="mb-4">{{ content.header_text }}</h2>
     {% endif %}
-    
+
     {% if content.read_content %}
     <div class="section mb-5">
         <h3 class="border-bottom pb-2">Failed Read Characters</h3>
         <div class="character-grid d-flex flex-wrap gap-3 justify-content-center">
             {% for char_data in content.read_content %}
-                <div class="character-box border p-3 text-center" style="min-width: 80px; font-size: 2em;">
-                    {{ char_data.char }}
-                    {% if char_data.pinyin %}<br><small class="text-muted">{{ char_data.pinyin }}</small>{% endif %}
-                </div>
+            <div class="character-box border p-3 text-center" style="min-width: 80px; font-size: 2em;">
+                {{ char_data.char }}
+                {% if char_data.pinyin %}<br><small class="text-muted">{{ char_data.pinyin }}</small>{% endif %}
+            </div>
             {% endfor %}
         </div>
     </div>
     {% endif %}
-    
+
     {% if content.write_content %}
     <div class="section mb-5">
         <h3 class="border-bottom pb-2">Failed Write Characters</h3>
         <div class="character-grid d-flex flex-wrap gap-3 justify-content-center">
             {% for char_data in content.write_content %}
-                <div class="character-box border p-3 text-center" style="min-width: 80px; font-size: 2em;">
-                    {{ char_data.char }}
-                    {% if char_data.pinyin %}<br><small class="text-muted">{{ char_data.pinyin }}</small>{% endif %}
-                </div>
+            <div class="character-box border p-3 text-center" style="min-width: 80px; font-size: 2em;">
+                {{ char_data.char }}
+                {% if char_data.pinyin %}<br><small class="text-muted">{{ char_data.pinyin }}</small>{% endif %}
+            </div>
             {% endfor %}
         </div>
     </div>
     {% endif %}
-    
+
     <div class="mt-4">
-        <a href="{% url 'progress' %}" class="btn btn-secondary">Back to Progress</a>
+        <a href="{% url 'lesson_list' %}" class="btn btn-secondary">Back to Lessons</a>
     </div>
 </div>
 {% endblock %}
