@@ -6,6 +6,17 @@
 <div class="container mt-4">
     <h1>Lesson Management</h1>
 
+    <p>
+        <button class="btn btn-outline-secondary btn-sm" onclick="expandAll()">Expand All</button>
+        <button class="btn btn-outline-secondary btn-sm" onclick="collapseAll()">Collapse All</button>
+    </p>
+
+    <style>
+        .accordion-button:not(.collapsed) .char-summary {
+            display: none;
+        }
+    </style>
+
     {% for book in books %}
     <div class="card mb-4">
         <div class="card-header">
@@ -14,50 +25,142 @@
             <small class="text-muted">{{ book.description }}</small>
             {% endif %}
         </div>
-        <div class="card-body p-0">
-            <table class="table table-striped table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th style="width: 15%">Lesson #</th>
-                        <th style="width: 50%">Characters</th>
-                        <th style="width: 15%">Status</th>
-                        <th style="width: 20%">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for lesson in book.lessons.all %}
-                    <tr>
-                        <td>{{ lesson.lesson_num }}</td>
-                        <td>{{ lesson.characters }}</td>
-                        <td>
-                            {% if lesson.is_learned %}
-                            <span class="badge bg-success">Learned</span>
-                            {% else %}
-                            <span class="badge bg-secondary">Not Learned</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <form action="{% url 'toggle_lesson_learned' lesson.id %}" method="post" class="d-inline">
-                                {% csrf_token %}
-                                {% if lesson.is_learned %}
-                                <button type="submit" class="btn btn-sm btn-warning">Mark as Unlearned</button>
-                                {% else %}
-                                <button type="submit" class="btn btn-sm btn-primary">Mark as Learned</button>
-                                {% endif %}
-                            </form>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="4">No lessons found in this book.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="card-body">
+            <div class="accordion" id="accordionBook{{ book.id }}">
+                {% for lesson in book.lessons.all %}
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading{{ lesson.id }}">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#collapse{{ lesson.id }}" aria-expanded="false"
+                            aria-controls="collapse{{ lesson.id }}">
+                            <div class="d-flex w-100 align-items-center justify-content-between me-3">
+                                <div>
+                                    <strong>Lesson {{ lesson.lesson_num }}</strong>
+                                    {% if not lesson.is_learned %}
+                                    <span class="badge bg-secondary ms-2">Not Learned</span>
+                                    {% endif %}
+                                    <span class="char-summary text-muted ms-3 small">{{ lesson.characters }}</span>
+                                </div>
+
+                                <div class="d-flex align-items-center" style="min-width: 300px;">
+                                    {% if lesson.stats.read.total > 0 %}
+                                    <div class="me-3 text-center" style="width: 120px;">
+                                        <small class="d-block text-muted mb-1" style="font-size: 0.75rem;">Read</small>
+                                        <div class="progress" style="height: 6px;">
+                                            <div class="progress-bar bg-success" role="progressbar"
+                                                style="width: {% widthratio lesson.stats.read.mastered lesson.stats.read.total 100 %}%">
+                                            </div>
+                                            <div class="progress-bar bg-warning" role="progressbar"
+                                                style="width: {% widthratio lesson.stats.read.learning lesson.stats.read.total 100 %}%">
+                                            </div>
+                                            <div class="progress-bar bg-danger" role="progressbar"
+                                                style="width: {% widthratio lesson.stats.read.lapsing lesson.stats.read.total 100 %}%">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+
+                                    {% if lesson.stats.write.total > 0 %}
+                                    <div class="text-center" style="width: 120px;">
+                                        <small class="d-block text-muted mb-1" style="font-size: 0.75rem;">Write</small>
+                                        <div class="progress" style="height: 6px;">
+                                            <div class="progress-bar bg-success" role="progressbar"
+                                                style="width: {% widthratio lesson.stats.write.mastered lesson.stats.write.total 100 %}%">
+                                            </div>
+                                            <div class="progress-bar bg-warning" role="progressbar"
+                                                style="width: {% widthratio lesson.stats.write.learning lesson.stats.write.total 100 %}%">
+                                            </div>
+                                            <div class="progress-bar bg-danger" role="progressbar"
+                                                style="width: {% widthratio lesson.stats.write.lapsing lesson.stats.write.total 100 %}%">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="collapse{{ lesson.id }}" class="accordion-collapse collapse"
+                        aria-labelledby="heading{{ lesson.id }}" data-bs-parent="#accordionBook{{ book.id }}">
+                        <div class="accordion-body">
+                            <div class="row mb-3">
+                                <div class="col">
+                                    <p><strong>Characters:</strong> {{ lesson.characters }}</p>
+                                </div>
+                                <div class="col-auto">
+                                    <form action="{% url 'toggle_lesson_learned' lesson.id %}" method="post"
+                                        class="d-inline">
+                                        {% csrf_token %}
+                                        {% if lesson.is_learned %}
+                                        <button type="submit" class="btn btn-sm btn-warning">Mark as Unlearned</button>
+                                        {% else %}
+                                        <button type="submit" class="btn btn-sm btn-primary">Mark as Learned</button>
+                                        {% endif %}
+                                    </form>
+                                </div>
+                            </div>
+
+                            <table class="table table-sm table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Character</th>
+                                        <th>Read (Days Ago)</th>
+                                        <th>Write (Days Ago)</th>
+                                        <th>Read Retrievability</th>
+                                        <th>Read Due In</th>
+                                        <th>Write Retrievability</th>
+                                        <th>Write Due In</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for stat in lesson.detailed_stats %}
+                                    <tr>
+                                        <td>{{ stat.char }}</td>
+                                        <td>
+                                            {% for record in stat.read_history %}
+                                            <span class="{{ record.color }}">{{ record.days_ago }}</span>&nbsp;
+                                            {% endfor %}
+                                        </td>
+                                        <td>
+                                            {% for record in stat.write_history %}
+                                            <span class="{{ record.color }}">{{ record.days_ago }}</span>&nbsp;
+                                            {% endfor %}
+                                        </td>
+                                        <td>{{ stat.read.retrievability_str }}</td>
+                                        <td>{{ stat.read.due_in_days_str }}</td>
+                                        <td>{{ stat.write.retrievability_str }}</td>
+                                        <td>{{ stat.write.due_in_days_str }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="p-3">No lessons found in this book.</div>
+                {% endfor %}
+            </div>
         </div>
     </div>
     {% empty %}
     <p>No books found.</p>
     {% endfor %}
+
+    <script>
+        function expandAll() {
+            var accordionButtons = document.querySelectorAll('.accordion-button.collapsed');
+            accordionButtons.forEach(function (button) {
+                button.click();
+            });
+        }
+
+        function collapseAll() {
+            var accordionButtons = document.querySelectorAll('.accordion-button:not(.collapsed)');
+            accordionButtons.forEach(function (button) {
+                button.click();
+            });
+        }
+    </script>
 </div>
 {% endblock %}

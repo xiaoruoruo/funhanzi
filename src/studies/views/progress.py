@@ -32,6 +32,8 @@ def progress_view(request):
         logger.info(f"  - Char: {log.word.hanzi}, Type: {log.type}, Score: {log.score}, Date: {log.study_date}")
 
     progress_data = {}
+    
+    # Pre-populate structure for logs
     for log in ranked_study_logs:
         char = log.word.hanzi
         if char not in progress_data:
@@ -54,25 +56,28 @@ def progress_view(request):
         )
 
     try:
+        from ..logic import stats
         study_logs = StudyLog.objects.filter(
             type__in=['read', 'write']
         ).select_related('word')
-        fsrs_cards = fsrs.build_cards_from_logs(list(study_logs))  # Assuming function updated to not need user
+        fsrs_cards = fsrs.build_cards_from_logs(list(study_logs))
+        
+        # Calculate stats using shared logic
+        char_stats = stats.calculate_character_stats(fsrs_cards, local_now)
 
-        for (char, card_type), card in fsrs_cards.items():
-            if char not in progress_data:
-                continue
-            try:
-                scheduler = fsrs.read_scheduler if card_type == "read" else fsrs.write_scheduler
-                retrievability_val = scheduler.get_card_retrievability(card, local_now)
-                if retrievability_val is not None:
-                    progress_data[char][card_type]["retrievability"] = f"{float(retrievability_val) * 100:.2f}%"
-                if hasattr(card, 'due') and card.due:
-                    due_in_days = (card.due - local_now).days
-                    progress_data[char][card_type]["due_in_days"] = due_in_days
-            except Exception as e:
-                logger.error(f"Error processing FSRS card for {char} ({card_type}): {e}")
-                pass
+        # Merge stats into progress_data
+        for char, data in char_stats.items():
+            if char in progress_data:
+                if data["read"]["retrievability_str"] != "N/A":
+                    progress_data[char]["read"]["retrievability"] = data["read"]["retrievability_str"]
+                if data["read"]["due_in_days_str"] != "N/A":
+                    progress_data[char]["read"]["due_in_days"] = data["read"]["due_in_days_str"]
+                
+                if data["write"]["retrievability_str"] != "N/A":
+                    progress_data[char]["write"]["retrievability"] = data["write"]["retrievability_str"]
+                if data["write"]["due_in_days_str"] != "N/A":
+                    progress_data[char]["write"]["due_in_days"] = data["write"]["due_in_days_str"]
+
     except Exception as e:
         logger.error(f"Error in FSRS processing: {e}")
         pass

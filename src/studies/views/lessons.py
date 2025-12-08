@@ -1,11 +1,52 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from studies.models import Book, Lesson
+from studies.models import Book, Lesson, StudyLog
 import threading
-from ..logic import word_population
+from django.utils import timezone
+import pytz
+from ..logic import word_population, fsrs, stats
 
 def lesson_list(request):
-    """Displays a list of all lessons grouped by book."""
+    """Displays a list of all lessons grouped by book with progress stats."""
     books = Book.objects.prefetch_related('lessons').all()
+    
+    # Fetch all study logs for stats calculation
+    study_logs = StudyLog.objects.filter(
+        type__in=['read', 'write']
+    ).select_related('word')
+    
+    local_tz = pytz.timezone('America/Los_Angeles')
+    local_now = timezone.now().astimezone(local_tz)
+    
+    # Build FSRS cards and stats
+    fsrs_cards = fsrs.build_cards_from_logs(list(study_logs))
+    character_stats = stats.calculate_character_stats(fsrs_cards, local_now)
+    recent_history = stats.calculate_recent_history(study_logs, local_now)
+    
+    # Attach stats to lessons
+    for book in books:
+        for lesson in book.lessons.all():
+            chars = [c.strip() for c in lesson.characters.split(',')]
+            lesson.stats = stats.aggregate_lesson_stats(character_stats, chars)
+            
+            # Attach detailed stats for the accordion view
+            lesson.detailed_stats = []
+            for char in chars:
+                char_data = character_stats.get(char, {
+                    "read": {"retrievability_str": "N/A", "due_in_days_str": "N/A"},
+                    "write": {"retrievability_str": "N/A", "due_in_days_str": "N/A"}
+                })
+                
+                # Get recent history safely
+                char_history = recent_history.get(char, {"read": [], "write": []})
+                
+                lesson.detailed_stats.append({
+                    "char": char,
+                    "read": char_data["read"],
+                    "read_history": char_history.get("read", []),
+                    "write": char_data["write"],
+                    "write_history": char_history.get("write", [])
+                })
+            
     return render(request, 'studies/lessons.html', {'books': books})
 
 
