@@ -8,7 +8,7 @@ def view_study(request, study_id):
     content = study.content
     templates_by_type = {
         'chars': 'studies/study_chars.html',
-        'failed': 'studies/study_failed.html',
+        'failed': 'studies/study_chars.html',
         'review': 'studies/study_review.html',
         'cloze': 'studies/study_cloze.html',
         'words': 'studies/study_words.html',

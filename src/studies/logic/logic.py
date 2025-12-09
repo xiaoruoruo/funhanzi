@@ -136,9 +136,13 @@ def create_failed_study_sheet(
     recency_days = recency_days if recency_days is not None else 8
 
     # 2. Get failed characters using the Selection class
+    # Calculate cutoff_date
+    cutoff_date = (date.today() - timedelta(days=recency_days)).isoformat()
+
+    # 2. Get failed characters using the Selection class
     s = selection.Selection()
-    failed_read_chars = s.from_failed_records("read", recency_days, threshold).get_all()
-    failed_write_chars = s.from_failed_records("write", recency_days, threshold).get_all()
+    failed_read_chars = s.from_failed_records("read", cutoff_date, threshold).get_all()
+    failed_write_chars = s.from_failed_records("write", cutoff_date, threshold).get_all()
 
     # 3. Combine and truncate the character lists with corrected logic
     read_set = set(failed_read_chars)
@@ -167,17 +171,17 @@ def create_failed_study_sheet(
     final_write_chars = [char for char in final_chars if char in write_set]
 
     # 4. Generate content for the final character lists
-    read_content = study_char_word.generate_content(final_read_chars)
-    write_content = study_char_word.generate_content(final_write_chars)
+    # Since we are reusing study_chars.html, we merge them into a single content list.
+    # The distinction between read/write failures is implicitly handled by the fact that
+    # they are all "failed characters" being reviewed.
+    content = study_char_word.generate_content(final_chars)
 
     # 5. Return the content as a JSON-serializable structure
     result = {
         'type': 'failed',
         'header_text': header_text,
-        'read_content': read_content,
-        'write_content': write_content,
-        'failed_read_chars': final_read_chars,
-        'failed_write_chars': final_write_chars
+        'content': content,
+        'selected_chars': final_chars
     }
 
     return result
