@@ -3,6 +3,7 @@ from studies.models import Book, Lesson, StudyLog
 import threading
 from django.utils import timezone
 import pytz
+import re
 from ..logic import word_population, fsrs, stats
 
 def lesson_list(request):
@@ -25,7 +26,13 @@ def lesson_list(request):
     # Attach stats to lessons
     for book in books:
         for lesson in book.lessons.all():
-            chars = [c.strip() for c in lesson.characters.split(',')]
+            raw_chars = lesson.characters.strip()
+            if ',' in raw_chars:
+                chars = [c.strip() for c in raw_chars.split(',') if c.strip()]
+            elif re.search(r'\s', raw_chars):
+                chars = raw_chars.split()
+            else:
+                chars = list(raw_chars)
             lesson.stats = stats.aggregate_lesson_stats(character_stats, chars)
             
             # Attach detailed stats for the accordion view
@@ -63,7 +70,13 @@ def toggle_lesson_learned(request, lesson_id):
         if not was_learned and lesson.is_learned:
             # Trigger background population
             
-            chars = [c.strip() for c in lesson.characters.split(',')]
+            raw_chars = lesson.characters.strip()
+            if ',' in raw_chars:
+                chars = [c.strip() for c in raw_chars.split(',') if c.strip()]
+            elif re.search(r'\s', raw_chars):
+                chars = raw_chars.split()
+            else:
+                chars = list(raw_chars)
             threading.Thread(target=word_population.seed_words_for_lesson, args=(chars,)).start()
             
     return redirect('lesson_list')
