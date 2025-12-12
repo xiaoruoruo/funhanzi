@@ -38,6 +38,20 @@ class Study(models.Model):
     def __str__(self):
         return f"{self.type} study"
 
+    @property
+    def log_type(self):
+        log_type_map = {
+            'chars': 'writestudy',
+            'failed': 'writestudy',
+            'cloze': 'readstudy',
+            'review': 'readstudy',
+            'words': 'readstudy',
+            'ch_en_matching': 'readstudy'
+        }
+        if self.type not in log_type_map:
+             raise ValueError(f"Unknown study type: {self.type}")
+        return log_type_map[self.type]
+
 
 class Exam(models.Model):
     """

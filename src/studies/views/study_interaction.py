@@ -93,7 +93,7 @@ def mark_study_done(request, study_id):
     
     for char in characters:
         word, created = Word.objects.get_or_create(hanzi=char)
-        StudyLog.objects.create(word=word, type='readstudy', score=5, study_date=today)
+        StudyLog.objects.create(word=word, type=study.log_type, score=5, study_date=today)
 
     study.done = True
     study.save()
