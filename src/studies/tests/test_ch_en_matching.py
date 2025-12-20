@@ -18,7 +18,7 @@ class ChEnMatchingStudyTest(TestCase):
         ]
 
         mock_response = MagicMock()
-        mock_response.parsed = mock_translations
+        mock_response.parsed = MagicMock(translations=mock_translations)
 
         mock_genai_instance = MagicMock()
         mock_genai_instance.models.generate_content.return_value = mock_response
