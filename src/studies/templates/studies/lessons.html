@@ -88,6 +88,29 @@
                                     <p><strong>Characters:</strong> {{ lesson.characters }}</p>
                                 </div>
                                 <div class="col-auto">
+                                    <form method="POST" class="d-inline">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="book_id" value="{{ book.id }}">
+                                        <input type="hidden" name="lesson_range" value="{{ lesson.lesson_num }}">
+                                        <input type="hidden" name="num_chars" value="100">
+
+                                        <div class="dropdown d-inline me-2">
+                                            <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button"
+                                                id="generateDropdown{{ lesson.id }}" data-bs-toggle="dropdown"
+                                                aria-expanded="false">
+                                                Generate Study
+                                            </button>
+                                            <ul class="dropdown-menu" aria-labelledby="generateDropdown{{ lesson.id }}">
+                                                <li><button type="submit" formaction="{% url 'generate_read_exam' %}"
+                                                        class="dropdown-item">Generate Read Exam</button></li>
+                                                <li><button type="submit" formaction="{% url 'generate_write_exam' %}"
+                                                        class="dropdown-item">Generate Write Exam</button></li>
+                                                <li><button type="submit" formaction="{% url 'generate_study_chars' %}"
+                                                        class="dropdown-item">Generate Study Sheet</button></li>
+                                            </ul>
+                                        </div>
+                                    </form>
+
                                     <form action="{% url 'toggle_lesson_learned' lesson.id %}" method="post"
                                         class="d-inline">
                                         {% csrf_token %}
@@ -161,6 +184,7 @@
                 button.click();
             });
         }
+
     </script>
 </div>
 {% endblock %}
