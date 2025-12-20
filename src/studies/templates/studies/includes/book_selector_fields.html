@@ -1,0 +1,23 @@
+<div class="mb-3" id="book_selection_container">
+    <label for="book_id" class="form-label">Book:</label>
+    <select class="form-select" id="book_id" name="book_id">
+        <option value="">All Books</option>
+        {% for book in books %}
+        <option value="{{ book.id }}">{{ book.title }}</option>
+        {% endfor %}
+    </select>
+</div>
+
+<div class="mb-3" id="lesson_scope_container">
+    <label for="lesson_scope" class="form-label">Lesson Scope:</label>
+    <select class="form-select" id="lesson_scope" name="lesson_scope">
+        <option value="all">All Learned Lessons</option>
+        <option value="specific">Specific Lesson</option>
+    </select>
+</div>
+
+<div class="mb-3" id="specific_lesson_container" style="display: none;">
+    <label for="lesson_range" class="form-label">Specific Lesson(s):</label>
+    <input type="text" class="form-control" id="lesson_range" name="lesson_range" placeholder="e.g. 1-3, 5">
+    <div class="form-text text-muted">Enter lesson numbers separated by commas or ranges (e.g. 1, 3-5). Requires a selected book.</div>
+</div>

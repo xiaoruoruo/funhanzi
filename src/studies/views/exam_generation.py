@@ -1,7 +1,8 @@
 from django.shortcuts import render, redirect
-from studies.models import Exam, ExamSettings
+from studies.models import Exam, ExamSettings, Book, Lesson
 from .. import logic as study_logic
 from ..logic import selection
+from .lessons import parse_lesson_range
 
 def generate_read_exam(request):
     # Get last used parameters from database
@@ -32,6 +33,17 @@ def generate_read_exam(request):
         title = request.POST.get('title', 'Reading Test')
         header_text = request.POST.get('header_text', f'Test date: ____. Circle the forgotten ones.')
 
+        book_id = request.POST.get('book_id')
+        book_id = int(book_id) if book_id else None
+        
+        lesson_range = request.POST.get('lesson_range')
+        lesson_ids = None
+        
+        if book_id and lesson_range:
+            lesson_nums = parse_lesson_range(lesson_range)
+            if lesson_nums:
+                lesson_ids = list(Lesson.objects.filter(book_id=book_id, lesson_num__in=lesson_nums).values_list('id', flat=True))
+
         # Save current parameters to database
         settings_obj, created = ExamSettings.objects.get_or_create(exam_type='read')
         settings_obj.num_chars = num_chars
@@ -45,7 +57,7 @@ def generate_read_exam(request):
         if score_filter is not None or days_filter is not None:
             # Custom selection with filters
             s = selection.Selection()
-            s = s.from_learned_lessons()
+            s = s.from_learned_lessons(book_id=book_id, lesson_ids=lesson_ids)
             if score_filter is not None:
                 s = s.remove_score_greater("read", score_filter)
             if days_filter is not None:
@@ -62,20 +74,24 @@ def generate_read_exam(request):
             content_data = study_logic.create_read_exam(
                 num_chars=num_chars, 
                 title=title, 
-                header_text=header_text
+                header_text=header_text,
+                book_id=book_id,
+                lesson_ids=lesson_ids
             )
 
         exam = Exam.objects.create(type='read', content=content_data)
         return redirect('view_exam', exam_id=exam.id)
     
     # Use last used parameters or defaults
+    books = Book.objects.filter(lessons__is_learned=True).distinct().prefetch_related('lessons')
     context = {
         'exam_type': 'read',
         'default_num_chars': last_params.get('num_chars', 10),
         'default_score_filter': last_params.get('score_filter'),
         'default_days_filter': last_params.get('days_filter'),
         'default_title': last_params.get('title', 'Reading Test'),
-        'default_header_text': last_params.get('header_text', 'Test date: ____. Circle the forgotten ones.')
+        'default_header_text': last_params.get('header_text', 'Test date: ____. Circle the forgotten ones.'),
+        'books': books
     }
     return render(request, 'studies/generate_exam.html', context)
 
@@ -109,6 +125,17 @@ def generate_write_exam(request):
         title = request.POST.get('title', 'Writing Test')
         header_text = request.POST.get('header_text', f'Test date: ____. Write down the characters.')
 
+        book_id = request.POST.get('book_id')
+        book_id = int(book_id) if book_id else None
+        
+        lesson_range = request.POST.get('lesson_range')
+        lesson_ids = None
+        
+        if book_id and lesson_range:
+            lesson_nums = parse_lesson_range(lesson_range)
+            if lesson_nums:
+                lesson_ids = list(Lesson.objects.filter(book_id=book_id, lesson_num__in=lesson_nums).values_list('id', flat=True))
+
         # Save current parameters to database
         settings_obj, created = ExamSettings.objects.get_or_create(exam_type='write')
         settings_obj.num_chars = num_chars
@@ -122,7 +149,7 @@ def generate_write_exam(request):
         if score_filter is not None or days_filter is not None:
             # Custom selection with filters
             s = selection.Selection()
-            s = s.from_learned_lessons()
+            s = s.from_learned_lessons(book_id=book_id, lesson_ids=lesson_ids)
             if score_filter is not None:
                 s = s.remove_score_greater("write", score_filter)
             if days_filter is not None:
@@ -139,20 +166,24 @@ def generate_write_exam(request):
             content_data = study_logic.create_write_exam(
                 num_chars=num_chars, 
                 title=title, 
-                header_text=header_text
+                header_text=header_text,
+                book_id=book_id,
+                lesson_ids=lesson_ids
             )
 
         exam = Exam.objects.create(type='write', content=content_data)
         return redirect('view_exam', exam_id=exam.id)
     
     # Use last used parameters or defaults
+    books = Book.objects.filter(lessons__is_learned=True).distinct().prefetch_related('lessons')
     context = {
         'exam_type': 'write',
         'default_num_chars': last_params.get('num_chars', 10),
         'default_score_filter': last_params.get('score_filter'),
         'default_days_filter': last_params.get('days_filter'),
         'default_title': last_params.get('title', 'Writing Test'),
-        'default_header_text': last_params.get('header_text', 'Test date: ____. Write down the characters.')
+        'default_header_text': last_params.get('header_text', 'Test date: ____. Write down the characters.'),
+        'books': books
     }
     return render(request, 'studies/generate_exam.html', context)
 

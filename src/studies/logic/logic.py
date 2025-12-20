@@ -344,6 +344,7 @@ def create_read_exam(
     header_text=None,
     book_id=None,
     lesson_id=None,
+    lesson_ids=None,
 ):
     """
     Orchestrates the creation of read exams as JSON content.
@@ -353,7 +354,7 @@ def create_read_exam(
         selected_chars = character_list
     else:
         s = selection.Selection()
-        selected_chars = s.from_learned_lessons(book_id=book_id, lesson_id=lesson_id).random(num_chars)
+        selected_chars = s.from_learned_lessons(book_id=book_id, lesson_id=lesson_id, lesson_ids=lesson_ids).random(num_chars)
 
     # Return the content as a JSON-serializable structure
     final_title = title if title is not None else "Reading Test"
@@ -387,6 +388,7 @@ def create_write_exam(
     header_text=None,
     book_id=None,
     lesson_id=None,
+    lesson_ids=None,
 ):
     """
     Orchestrates the creation of write exams as JSON content.
@@ -398,7 +400,7 @@ def create_write_exam(
         selected_chars = character_list
     else:
         s = selection.Selection()
-        selected_chars = s.from_learned_lessons(book_id=book_id, lesson_id=lesson_id).random(num_chars)
+        selected_chars = s.from_learned_lessons(book_id=book_id, lesson_id=lesson_id, lesson_ids=lesson_ids).random(num_chars)
 
     # 2. Generate word list using the greedy coverage algorithm
     remaining_chars = set(selected_chars)
