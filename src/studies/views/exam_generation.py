@@ -58,6 +58,8 @@ def generate_read_exam(request):
             # Custom selection with filters
             s = selection.Selection()
             s = s.from_learned_lessons(book_id=book_id, lesson_ids=lesson_ids)
+            # Remove hard mode words from regular exam
+            s = s.remove_hard_mode_words('read')
             if score_filter is not None:
                 s = s.remove_score_greater("read", score_filter)
             if days_filter is not None:
@@ -71,8 +73,14 @@ def generate_read_exam(request):
             )
         else:
             # Use default logic
+            # Explicitly select and filter to ensure hard mode exclusion
+            s = selection.Selection().from_learned_lessons(book_id=book_id, lesson_ids=lesson_ids)
+            s = s.remove_hard_mode_words('read')
+            selected_chars = s.random(num_chars)
+            
             content_data = study_logic.create_read_exam(
                 num_chars=num_chars, 
+                character_list=selected_chars,
                 title=title, 
                 header_text=header_text,
                 book_id=book_id,
@@ -150,6 +158,8 @@ def generate_write_exam(request):
             # Custom selection with filters
             s = selection.Selection()
             s = s.from_learned_lessons(book_id=book_id, lesson_ids=lesson_ids)
+            # Remove hard mode words from regular exam
+            s = s.remove_hard_mode_words('write')
             if score_filter is not None:
                 s = s.remove_score_greater("write", score_filter)
             if days_filter is not None:
@@ -163,8 +173,14 @@ def generate_write_exam(request):
             )
         else:
             # Use default logic
+            # Explicitly select and filter to ensure hard mode exclusion
+            s = selection.Selection().from_learned_lessons(book_id=book_id, lesson_ids=lesson_ids)
+            s = s.remove_hard_mode_words('write')
+            selected_chars = s.random(num_chars)
+            
             content_data = study_logic.create_write_exam(
-                num_chars=num_chars, 
+                num_chars=num_chars,
+                character_list=selected_chars,
                 title=title, 
                 header_text=header_text,
                 book_id=book_id,
@@ -224,7 +240,25 @@ def _generate_review_exam(request, exam_type):
         settings_obj.header_text = header_text
         settings_obj.save()
 
-        content_data = study_logic.create_review_exam(exam_type=exam_type, num_chars=num_chars)
+        # For review exam, we also want to filter out hard mode words
+        # but create_review_exam does selection internally.
+        # We need to modify create_review_exam or pre-select here.
+        # study_logic.create_review_exam likely uses Selection().from_fsrs(...)
+        
+        # Let's do it manually here to be safe and explicit
+        s = selection.Selection().from_fsrs(exam_type, due_only=True)
+        s = s.remove_hard_mode_words(exam_type).lowest_retrievability()
+        selected_chars = s.take(num_chars)
+        
+        # We need a way to pass these characters to create_review_exam
+        # Checking logic/exam_generation.py (which we haven't seen but inferred)
+        # Assuming it accepts character_list like others.
+        
+        content_data = study_logic.create_review_exam(
+            exam_type=exam_type, 
+            num_chars=num_chars,
+            character_list=selected_chars
+        )
         exam = Exam.objects.create(type=f'{exam_type}_review', content=content_data)
         return redirect('view_exam', exam_id=exam.id)
     
@@ -234,5 +268,55 @@ def _generate_review_exam(request, exam_type):
         'default_num_chars': last_params.get('num_chars', 20),
         'default_title': last_params.get('title', f'{exam_type.capitalize()} Review'),
         'default_header_text': last_params.get('header_text', f'Reviewing due characters. Test date: ____.')
+    }
+    return render(request, 'studies/generate_exam.html', context)
+
+def generate_recovery_exam_read(request):
+    """Generate read recovery exam"""
+    return _generate_recovery_exam(request, 'read')
+
+def generate_recovery_exam_write(request):
+    """Generate write recovery exam"""
+    return _generate_recovery_exam(request, 'write')
+
+def _generate_recovery_exam(request, exam_type):
+    """Helper for generating recovery exams"""
+    if request.method == 'POST':
+        title = request.POST.get('title', f'{exam_type.capitalize()} Recovery Exam')
+        header_text = request.POST.get('header_text', 'Recovering failed characters. Score > 1 to recover.')
+        
+        # Select hard mode words
+        s = selection.Selection().from_hard_mode(exam_type)
+        selected_chars = s.get_all() # Take all hard mode words? Or limit?
+        # Let's take all for now, or maybe random 50 if too many.
+        # Given user said "recovery exam", let's include all.
+        
+        num_chars = len(selected_chars)
+        
+        if exam_type == 'read':
+            content_data = study_logic.create_read_exam(
+                num_chars=num_chars,
+                character_list=selected_chars,
+                title=title,
+                header_text=header_text
+            )
+        else:
+            content_data = study_logic.create_write_exam(
+                num_chars=num_chars,
+                character_list=selected_chars,
+                title=title,
+                header_text=header_text
+            )
+            
+        exam = Exam.objects.create(type=f'{exam_type}', content=content_data)
+        return redirect('view_exam', exam_id=exam.id)
+    
+    # Just render a confirmation page or similar?
+    # Or reuse generate_exam template but with less options (no filters needed)
+    context = {
+        'exam_type': f'{exam_type}_recovery', # Fake type for template
+        'default_title': f'{exam_type.capitalize()} Recovery Exam',
+        'default_header_text': 'Recovering failed characters. Score > 1 to recover.',
+        'hide_filters': True # Helper for template to hide unnecessary fields
     }
     return render(request, 'studies/generate_exam.html', context)

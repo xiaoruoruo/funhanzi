@@ -13,6 +13,8 @@ from typing import List, Optional
 
 from studies.models import Word, StudyLog, Lesson
 from . import fsrs
+from django.db.models import Window, F
+from django.db.models.functions import RowNumber
 
 
 class Selection:
@@ -388,6 +390,104 @@ class Selection:
             return [log["word"].hanzi for log in self.study_logs]
         else:
             return [word.hanzi for word in self.words]
+
+    def get_hard_mode_words(self, record_type: str) -> List[Word]:
+        """
+        Identify words that are in "Hard Mode" (2 consecutive failures with score <= 1).
+        
+        Args:
+            record_type (str): The record type to check ('read' or 'write')
+            
+        Returns:
+            List[Word]: List of Word objects in hard mode
+        """
+        # We need to look at the last 2 records for each word
+        # Using a subquery approach to get the recent logs efficiently
+        
+        # 1. Fetch all relevant logs for the type, ordered by date desc
+        logs = StudyLog.objects.filter(type=record_type).order_by('word_id', '-study_date', '-id')
+        
+        # In memory processing (simpler than complex window functions in SQLite/Django)
+        # Assuming database size is manageable. If large, need raw SQL or window functions.
+        # Given personal use app, in-memory is fine.
+        
+        hard_mode_word_ids = set()
+        from collections import defaultdict
+        
+        # We only need the last 2 records per word
+        # Optimization: distinct words first, then fetch last 2
+        # Or just iterate since we're ordering by word
+        
+        current_word_id = None
+        consecutive_fails = 0
+        skip_current_word = False
+        
+        # Iterate through logs. Logs are ordered by word, then date desc.
+        for log in logs:
+            if log.word_id != current_word_id:
+                # New word
+                current_word_id = log.word_id
+                consecutive_fails = 0
+                skip_current_word = False
+                
+            if skip_current_word:
+                continue
+                
+            # Check if this log is a failure
+            if log.score is not None and log.score <= 1:
+                consecutive_fails += 1
+            else:
+                # Sequence broken by a pass (or score > 1)
+                # Since we look at newest first, a pass means the current streak is broken/non-existent.
+                skip_current_word = True
+                continue
+                
+            if consecutive_fails >= 2:
+                hard_mode_word_ids.add(current_word_id)
+                skip_current_word = True # Found status, stop checking this word
+                 
+        return list(Word.objects.filter(id__in=hard_mode_word_ids))
+
+    def remove_hard_mode_words(self, record_type: str) -> "Selection":
+        """
+        Filter out words that are in Hard Mode for the specified record type.
+        
+        Args:
+            record_type (str): 'read' or 'write'
+            
+        Returns:
+            Selection: Self for method chaining
+        """
+        hard_mode_words = self.get_hard_mode_words(record_type)
+        hard_mode_ids = {w.id for w in hard_mode_words}
+        
+        if self.is_fsrs_mode:
+            self.study_logs = [
+                log for log in self.study_logs 
+                if log["word"].id not in hard_mode_ids
+            ]
+        else:
+            self.words = [
+                word for word in self.words 
+                if word.id not in hard_mode_ids
+            ]
+            
+        return self
+
+    def from_hard_mode(self, record_type: str) -> "Selection":
+        """
+        Populate selection with words currently in Hard Mode.
+        
+        Args:
+            record_type (str): 'read' or 'write'
+            
+        Returns:
+            Selection: Self for method chaining
+        """
+        self.words = self.get_hard_mode_words(record_type)
+        self.study_logs = []
+        self.is_fsrs_mode = False
+        return self
 
     def _get_latest_scores(self, exam_type):
         """

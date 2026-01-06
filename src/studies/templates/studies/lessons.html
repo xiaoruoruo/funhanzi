@@ -56,6 +56,9 @@
                                             <div class="progress-bar bg-danger" role="progressbar"
                                                 style="width: {% widthratio lesson.stats.read.lapsing lesson.stats.read.total 100 %}%">
                                             </div>
+                                            <div class="progress-bar bg-dark" role="progressbar"
+                                                style="width: {% widthratio lesson.stats.read.hard lesson.stats.read.total 100 %}%">
+                                            </div>
                                         </div>
                                     </div>
                                     {% endif %}
@@ -72,6 +75,9 @@
                                             </div>
                                             <div class="progress-bar bg-danger" role="progressbar"
                                                 style="width: {% widthratio lesson.stats.write.lapsing lesson.stats.write.total 100 %}%">
+                                            </div>
+                                            <div class="progress-bar bg-dark" role="progressbar"
+                                                style="width: {% widthratio lesson.stats.write.hard lesson.stats.write.total 100 %}%">
                                             </div>
                                         </div>
                                     </div>

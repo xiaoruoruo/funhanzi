@@ -26,6 +26,8 @@ urlpatterns = [
     path('exam/write/', views.generate_write_exam, name='generate_write_exam'),
     path('exam/review/read/', views.generate_review_exam_read, name='generate_review_exam_read'),
     path('exam/review/write/', views.generate_review_exam_write, name='generate_review_exam_write'),
+    path('exam/recovery/read/', views.generate_recovery_exam_read, name='generate_recovery_exam_read'),
+    path('exam/recovery/write/', views.generate_recovery_exam_write, name='generate_recovery_exam_write'),
     
     # Exam recording URL
     path('exam/record/<int:exam_id>/', views.record_exam, name='record_exam'),

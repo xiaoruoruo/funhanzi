@@ -12,6 +12,8 @@ from .exam_generation import (
     generate_write_exam,
     generate_review_exam_read,
     generate_review_exam_write,
+    generate_recovery_exam_read,
+    generate_recovery_exam_write,
     _generate_review_exam,
 )
 from .study_interaction import (

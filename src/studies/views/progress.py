@@ -128,6 +128,32 @@ def stats_view(request):
         reviews_this_month = sum(1 for r in month_records if r['type'] in ['read', 'write'])
         studies_this_month = sum(1 for r in month_records if r['type'] in ['readstudy', 'writestudy'])
 
+        # Calculate Hard Mode counts (2 consecutive failures <= 1)
+        read_hard, write_hard = 0, 0
+        
+        records_by_char_type = defaultdict(list)
+        for r in historical_records:
+            records_by_char_type[(r['character'], r['type'])].append(r)
+            
+        for key, records in records_by_char_type.items():
+            char, type_ = key
+            if type_ not in ['read', 'write']:
+                continue
+                
+            # Records are mostly sorted but ensure date order
+            records.sort(key=lambda x: x['date'])
+            
+            if len(records) >= 2:
+                last_1 = records[-1]
+                last_2 = records[-2]
+                # Check for consecutive failures (score <= 1 confirms to logic/selection.py)
+                if last_1.get('score') is not None and last_1['score'] <= 1 and \
+                   last_2.get('score') is not None and last_2['score'] <= 1:
+                    if type_ == 'read':
+                        read_hard += 1
+                    elif type_ == 'write':
+                        write_hard += 1
+
         stats = {
             'month': month,  # Keep in YYYY-MM format to match Flask
             'total_reviews': reviews_this_month,
@@ -139,6 +165,8 @@ def stats_view(request):
             'write_mastered': write_mastered,
             'write_learning': write_learning,
             'write_lapsing': write_lapsing,
+            'read_hard': read_hard,
+            'write_hard': write_hard,
         }
         monthly_stats.append(stats)
 

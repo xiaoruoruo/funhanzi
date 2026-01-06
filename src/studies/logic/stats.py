@@ -1,4 +1,5 @@
 from . import fsrs
+from . import selection
 import logging
 
 logger = logging.getLogger(__name__)
@@ -9,12 +10,25 @@ def calculate_character_stats(fsrs_cards, local_now):
     """
     stats_data = {}
 
+    # Get hard mode words for read and write
+    s = selection.Selection()
+    read_hard_words = {w.hanzi for w in s.get_hard_mode_words('read')}
+    write_hard_words = {w.hanzi for w in s.get_hard_mode_words('write')}
+
     for (char, card_type), card in fsrs_cards.items():
         if char not in stats_data:
             stats_data[char] = {
-                "read": {"retrievability": None, "due_in_days": None, "retrievability_str": "N/A", "due_in_days_str": "N/A"},
-                "write": {"retrievability": None, "due_in_days": None, "retrievability_str": "N/A", "due_in_days_str": "N/A"},
+                "read": {"retrievability": None, "due_in_days": None, "retrievability_str": "N/A", "due_in_days_str": "N/A", "is_hard_mode": False},
+                "write": {"retrievability": None, "due_in_days": None, "retrievability_str": "N/A", "due_in_days_str": "N/A", "is_hard_mode": False},
             }
+        
+        is_hard = False
+        if card_type == "read" and char in read_hard_words:
+            is_hard = True
+        elif card_type == "write" and char in write_hard_words:
+            is_hard = True
+
+        stats_data[char][card_type]["is_hard_mode"] = is_hard
 
         try:
             scheduler = fsrs.read_scheduler if card_type == "read" else fsrs.write_scheduler
@@ -22,12 +36,23 @@ def calculate_character_stats(fsrs_cards, local_now):
             
             if retrievability_val is not None:
                 stats_data[char][card_type]["retrievability"] = float(retrievability_val)
-                stats_data[char][card_type]["retrievability_str"] = f"{float(retrievability_val) * 100:.2f}%"
+                if not is_hard:
+                    stats_data[char][card_type]["retrievability_str"] = f"{float(retrievability_val) * 100:.2f}%"
+                else:
+                    stats_data[char][card_type]["retrievability_str"] = "Hard"
             
             if hasattr(card, 'due') and card.due:
                 due_in_days = (card.due - local_now).days
+                due_in_days = (card.due - local_now).days
                 stats_data[char][card_type]["due_in_days"] = due_in_days
-                stats_data[char][card_type]["due_in_days_str"] = due_in_days
+                
+                if is_hard:
+                    stats_data[char][card_type]["retrievability_str"] = "Hard"
+                    stats_data[char][card_type]["due_in_days_str"] = "Hard"
+                else:
+                    stats_data[char][card_type]["retrievability_str"] = f"{float(retrievability_val) * 100:.2f}%"
+                    stats_data[char][card_type]["due_in_days_str"] = due_in_days
+
                 
         except Exception as e:
             logger.error(f"Error processing FSRS card for {char} ({card_type}): {e}")
@@ -41,8 +66,8 @@ def aggregate_lesson_stats(character_stats, lesson_chars):
     Returns counts for Mastered, Learning, Lapsing.
     """
     aggregated = {
-        "read": {"mastered": 0, "learning": 0, "lapsing": 0, "total": 0},
-        "write": {"mastered": 0, "learning": 0, "lapsing": 0, "total": 0}
+        "read": {"mastered": 0, "learning": 0, "lapsing": 0, "hard": 0, "total": 0},
+        "write": {"mastered": 0, "learning": 0, "lapsing": 0, "hard": 0, "total": 0}
     }
     
     for char in lesson_chars:
@@ -51,9 +76,14 @@ def aggregate_lesson_stats(character_stats, lesson_chars):
             
         for card_type in ["read", "write"]:
             r = character_stats[char][card_type]["retrievability"]
+            is_hard = character_stats[char][card_type].get("is_hard_mode", False)
+            
             if r is not None:
                 aggregated[card_type]["total"] += 1
-                if r > 0.9:
+                
+                if is_hard:
+                    aggregated[card_type]["hard"] += 1
+                elif r > 0.9:
                     aggregated[card_type]["mastered"] += 1
                 elif r >= 0.6:
                     aggregated[card_type]["learning"] += 1

@@ -462,17 +462,20 @@ def create_write_exam(
 
 
 
-def create_review_exam(exam_type, num_chars):
+def create_review_exam(exam_type, num_chars, character_list=None):
     """
     Orchestrates the creation of a review exam (read or write) based on FSRS due cards as JSON content.
     This implementation replicates the legacy app's logic of selecting due cards and then
     delegating to the standard exam creation functions.
     """
     # 1. Select due characters using the Selection API
-    s = selection.Selection()
-    # Note: The Django 'selection' implementation needs to handle FSRS logic.
-    # We assume it has been updated to do so.
-    due_chars = s.from_fsrs(exam_type, due_only=True).get_all()
+    if character_list is not None:
+        due_chars = character_list
+    else:
+        s = selection.Selection()
+        # Note: The Django 'selection' implementation needs to handle FSRS logic.
+        # We assume it has been updated to do so.
+        due_chars = s.from_fsrs(exam_type, due_only=True).get_all()
 
     if not due_chars:
         return None  # No due characters, so no exam to generate
