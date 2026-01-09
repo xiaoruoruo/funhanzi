@@ -26,6 +26,7 @@ def lesson_list(request):
     # Attach stats to lessons
     for book in books:
         for lesson in book.lessons.all():
+            # Parse characters - existing records may be in various formats
             raw_chars = lesson.characters.strip()
             if ',' in raw_chars:
                 chars = [c.strip() for c in raw_chars.split(',') if c.strip()]
@@ -69,7 +70,7 @@ def toggle_lesson_learned(request, lesson_id):
         
         if not was_learned and lesson.is_learned:
             # Trigger background population
-            
+            # Parse characters - existing records may be in various formats
             raw_chars = lesson.characters.strip()
             if ',' in raw_chars:
                 chars = [c.strip() for c in raw_chars.split(',') if c.strip()]

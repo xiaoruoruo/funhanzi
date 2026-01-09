@@ -163,6 +163,19 @@ class Lesson(models.Model):
     is_learned = models.BooleanField(default=False)
     characters = models.TextField() # Store characters as a comma-separated string
 
+    def save(self, *args, **kwargs):
+        """Clean characters by removing duplicates and whitespace before saving."""
+        # Split into individual characters, filter out commas and whitespace
+        chars = [c for c in self.characters if c not in (',', ' ', '\t', '\n', '\r')]
+        
+        # Remove duplicates while preserving order
+        unique_chars = list(dict.fromkeys(chars))
+        
+        # Store as comma-separated string
+        self.characters = ','.join(unique_chars)
+        
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"Lesson {self.lesson_num}"
 
