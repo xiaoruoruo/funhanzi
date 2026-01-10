@@ -38,8 +38,14 @@ RUN groupadd --system --gid 999 nonroot \
 # Copy the application from the builder
 COPY --from=builder --chown=nonroot:nonroot /app /app
 
+# Create logs directory
+RUN mkdir -p /app/logs && chown nonroot:nonroot /app/logs
+
 # Place executables in the environment at the front of the path
 ENV PATH="/app/.venv/bin:$PATH"
+
+# Set default logs directory
+ENV LOGS_DIR=/app/logs
 
 # Use the non-root user to run our application
 USER nonroot
