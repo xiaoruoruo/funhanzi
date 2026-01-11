@@ -118,6 +118,7 @@ class ExamSettings(models.Model):
     days_filter = models.IntegerField(null=True, blank=True)
     title = models.CharField(max_length=200, default='')
     header_text = models.CharField(max_length=500, default='')
+    include_hard_mode = models.BooleanField(default=False)
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:

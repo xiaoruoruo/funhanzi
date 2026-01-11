@@ -13,7 +13,8 @@ def generate_read_exam(request):
             'score_filter': settings_obj.score_filter,
             'days_filter': settings_obj.days_filter,
             'title': settings_obj.title,
-            'header_text': settings_obj.header_text
+            'header_text': settings_obj.header_text,
+            'include_hard_mode': settings_obj.include_hard_mode
         }
     except ExamSettings.DoesNotExist:
         last_params = {}
@@ -32,6 +33,7 @@ def generate_read_exam(request):
             days_filter = None
         title = request.POST.get('title', 'Reading Test')
         header_text = request.POST.get('header_text', f'Test date: ____. Circle the forgotten ones.')
+        include_hard_mode = request.POST.get('include_hard_mode') == 'on'
 
         book_id = request.POST.get('book_id')
         book_id = int(book_id) if book_id else None
@@ -51,6 +53,7 @@ def generate_read_exam(request):
         settings_obj.days_filter = days_filter
         settings_obj.title = title
         settings_obj.header_text = header_text
+        settings_obj.include_hard_mode = include_hard_mode
         settings_obj.save()
 
         # For read exam, we'll modify the selection process if filters are provided
@@ -58,8 +61,9 @@ def generate_read_exam(request):
             # Custom selection with filters
             s = selection.Selection()
             s = s.from_learned_lessons(book_id=book_id, lesson_ids=lesson_ids)
-            # Remove hard mode words from regular exam
-            s = s.remove_hard_mode_words('read')
+            # Remove hard mode words from regular exam unless requested
+            if not include_hard_mode:
+                s = s.remove_hard_mode_words('read')
             if score_filter is not None:
                 s = s.remove_score_greater("read", score_filter)
             if days_filter is not None:
@@ -75,7 +79,8 @@ def generate_read_exam(request):
             # Use default logic
             # Explicitly select and filter to ensure hard mode exclusion
             s = selection.Selection().from_learned_lessons(book_id=book_id, lesson_ids=lesson_ids)
-            s = s.remove_hard_mode_words('read')
+            if not include_hard_mode:
+                s = s.remove_hard_mode_words('read')
             selected_chars = s.random(num_chars)
             
             content_data = study_logic.create_read_exam(
@@ -99,6 +104,7 @@ def generate_read_exam(request):
         'default_days_filter': last_params.get('days_filter'),
         'default_title': last_params.get('title', 'Reading Test'),
         'default_header_text': last_params.get('header_text', 'Test date: ____. Circle the forgotten ones.'),
+        'default_include_hard_mode': last_params.get('include_hard_mode', False),
         'books': books
     }
     return render(request, 'studies/generate_exam.html', context)
@@ -113,7 +119,8 @@ def generate_write_exam(request):
             'score_filter': settings_obj.score_filter,
             'days_filter': settings_obj.days_filter,
             'title': settings_obj.title,
-            'header_text': settings_obj.header_text
+            'header_text': settings_obj.header_text,
+            'include_hard_mode': settings_obj.include_hard_mode
         }
     except ExamSettings.DoesNotExist:
         last_params = {}
@@ -132,6 +139,7 @@ def generate_write_exam(request):
             days_filter = None
         title = request.POST.get('title', 'Writing Test')
         header_text = request.POST.get('header_text', f'Test date: ____. Write down the characters.')
+        include_hard_mode = request.POST.get('include_hard_mode') == 'on'
 
         book_id = request.POST.get('book_id')
         book_id = int(book_id) if book_id else None
@@ -151,6 +159,7 @@ def generate_write_exam(request):
         settings_obj.days_filter = days_filter
         settings_obj.title = title
         settings_obj.header_text = header_text
+        settings_obj.include_hard_mode = include_hard_mode
         settings_obj.save()
 
         # For write exam, we'll modify the selection process if filters are provided
@@ -158,8 +167,9 @@ def generate_write_exam(request):
             # Custom selection with filters
             s = selection.Selection()
             s = s.from_learned_lessons(book_id=book_id, lesson_ids=lesson_ids)
-            # Remove hard mode words from regular exam
-            s = s.remove_hard_mode_words('write')
+            # Remove hard mode words from regular exam unless requested
+            if not include_hard_mode:
+                s = s.remove_hard_mode_words('write')
             if score_filter is not None:
                 s = s.remove_score_greater("write", score_filter)
             if days_filter is not None:
@@ -175,7 +185,8 @@ def generate_write_exam(request):
             # Use default logic
             # Explicitly select and filter to ensure hard mode exclusion
             s = selection.Selection().from_learned_lessons(book_id=book_id, lesson_ids=lesson_ids)
-            s = s.remove_hard_mode_words('write')
+            if not include_hard_mode:
+                s = s.remove_hard_mode_words('write')
             selected_chars = s.random(num_chars)
             
             content_data = study_logic.create_write_exam(
@@ -199,6 +210,7 @@ def generate_write_exam(request):
         'default_days_filter': last_params.get('days_filter'),
         'default_title': last_params.get('title', 'Writing Test'),
         'default_header_text': last_params.get('header_text', 'Test date: ____. Write down the characters.'),
+        'default_include_hard_mode': last_params.get('include_hard_mode', False),
         'books': books
     }
     return render(request, 'studies/generate_exam.html', context)
@@ -223,7 +235,8 @@ def _generate_review_exam(request, exam_type):
         last_params = {
             'num_chars': settings_obj.num_chars,
             'title': settings_obj.title,
-            'header_text': settings_obj.header_text
+            'header_text': settings_obj.header_text,
+            'include_hard_mode': settings_obj.include_hard_mode
         }
     except ExamSettings.DoesNotExist:
         last_params = {}
@@ -232,12 +245,14 @@ def _generate_review_exam(request, exam_type):
         num_chars = int(request.POST.get('num_chars', 20))
         title = request.POST.get('title', f'{exam_type.capitalize()} Review')
         header_text = request.POST.get('header_text', f'Reviewing due characters. Test date: ____.')
+        include_hard_mode = request.POST.get('include_hard_mode') == 'on'
 
         # Save current parameters to database
         settings_obj, created = ExamSettings.objects.get_or_create(exam_type=review_exam_type)
         settings_obj.num_chars = num_chars
         settings_obj.title = title
         settings_obj.header_text = header_text
+        settings_obj.include_hard_mode = include_hard_mode
         settings_obj.save()
 
         # For review exam, we also want to filter out hard mode words
@@ -247,7 +262,10 @@ def _generate_review_exam(request, exam_type):
         
         # Let's do it manually here to be safe and explicit
         s = selection.Selection().from_fsrs(exam_type, due_only=True)
-        s = s.remove_hard_mode_words(exam_type).lowest_retrievability()
+        if not include_hard_mode:
+            s = s.remove_hard_mode_words(exam_type)
+        
+        s = s.lowest_retrievability()
         selected_chars = s.take(num_chars)
         
         # We need a way to pass these characters to create_review_exam
@@ -267,7 +285,8 @@ def _generate_review_exam(request, exam_type):
         'exam_type': f'{exam_type}_review',
         'default_num_chars': last_params.get('num_chars', 20),
         'default_title': last_params.get('title', f'{exam_type.capitalize()} Review'),
-        'default_header_text': last_params.get('header_text', f'Reviewing due characters. Test date: ____.')
+        'default_header_text': last_params.get('header_text', f'Reviewing due characters. Test date: ____.'),
+        'default_include_hard_mode': last_params.get('include_hard_mode', False)
     }
     return render(request, 'studies/generate_exam.html', context)
 
