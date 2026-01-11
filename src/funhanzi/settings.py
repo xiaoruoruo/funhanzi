@@ -28,7 +28,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG') == '1'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '*']
 
 
 # Application definition
@@ -121,7 +121,8 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / "media"
 
 # Logging configuration
-LOGS_DIR = os.environ.get('LOGS_DIR', str(BASE_DIR))
+import os
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -139,7 +140,7 @@ LOGGING = {
         'file': {
             'level': 'INFO',
             'class': 'logging.FileHandler',
-            'filename': os.path.join(LOGS_DIR, 'django.log'),
+            'filename': os.path.join(BASE_DIR, 'django.log'),
             'formatter': 'verbose',
         },
         'console': {
