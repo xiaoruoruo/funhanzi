@@ -34,7 +34,7 @@ def seed_words_for_char(char, desired_words=10):
     client = ai.get_gemini_client()
 
     def generate_words(length, count):
-        prompt = f"Generate {length}-character Chinese words containing the character '{char}', generate {count} words. Output the words separated by space, no quotes please."
+        prompt = f"生成{count}个包含字符 ‘{char}’的{length}字中文词组。输出结果请用空格分隔，不要带引号。"
         response = ai.generate_content(client, prompt)
         if response and response.text:
             return response.text.split()
