@@ -83,56 +83,72 @@ def generate_content(characters: List[str]) -> dict:
     client = genai.Client()
     best_sentence = "无法生成句子"
     best_score = -float("inf")
+    forbidden_chars = set()
 
-    try:
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=f"""
+    for attempt in range(2):
+        if attempt > 0:
+            logger.info(f"Retrying sentence generation. Forbidden chars: {forbidden_chars}")
+
+        prompt_text = f"""
 你是一个小学语文老师。请根据以下词语：
 - 词语列表: '{words_str}'
 
 请生成5个包含部分词语的句子。
 每个句子必须满足以下条件：
    - 长度在10到18个汉字。
-""",
-            config={
-                "response_mime_type": "application/json",
-                "response_schema": SentencesResponse,
-            },
-        )
+"""
+        if forbidden_chars:
+            prompt_text += f"   - 请不要使用以下生字: {''.join(forbidden_chars)}\n"
 
-        response_data: SentencesResponse = response.parsed
-        candidate_sentences = response_data.sentences
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt_text,
+                config={
+                    "response_mime_type": "application/json",
+                    "response_schema": SentencesResponse,
+                },
+            )
 
-        for sentence in candidate_sentences:
-            if len(sentence) > 18:
-                continue
+            response_data: SentencesResponse = response.parsed
+            candidate_sentences = response_data.sentences
 
-            score = 0
-            # Rule 1: +1 for each character in `characters`
-            for char in sentence:
-                if char in characters_set:
-                    score += 1
+            for sentence in candidate_sentences:
+                if len(sentence) > 18:
+                    continue
 
-            # Rule 2: +4 for each word in `selected_words`
-            for word in selected_words:
-                if word in sentence:
-                    score += 4
+                score = 0
+                # Rule 1: +1 for each character in `characters`
+                for char in sentence:
+                    if char in characters_set:
+                        score += 1
 
-            # Rule 3: -4 for each character not in `allowed_chars`
-            unknown_chars = []
-            for char in sentence:
-                if char not in allowed_chars_set:
-                    score -= 4
-                    unknown_chars.append(char)
+                # Rule 2: +4 for each word in `selected_words`
+                for word in selected_words:
+                    if word in sentence:
+                        score += 4
 
-            logger.info(f"{score} points: {sentence} (unknown: {unknown_chars})")
-            if score > best_score:
-                best_score = score
-                best_sentence = sentence
+                # Rule 3: -4 for each character not in `allowed_chars`
+                unknown_chars = []
+                for char in sentence:
+                    if char not in allowed_chars_set:
+                        score -= 4
+                        unknown_chars.append(char)
+                
+                if unknown_chars:
+                    forbidden_chars.update(unknown_chars)
 
-    except Exception as e:
-        logger.error(f"Could not generate or parse sentences: {e}")
+                logger.info(f"{score} points: {sentence} (unknown: {unknown_chars})")
+                if score > best_score:
+                    best_score = score
+                    best_sentence = sentence
+
+            if best_score >= 6:
+                break
+
+        except Exception as e:
+            logger.error(f"Could not generate or parse sentences: {e}")
+            break
 
     if best_score < 6:
         logger.warning("No great sentence generated, using fallback.")
